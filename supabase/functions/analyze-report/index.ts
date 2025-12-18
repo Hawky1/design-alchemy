@@ -15,10 +15,10 @@ serve(async (req) => {
   try {
     console.log('Analyze report function called');
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
-      throw new Error('AI service not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured');
+      throw new Error('Gemini API key not configured');
     }
 
     // Parse the form data to get uploaded files
@@ -132,7 +132,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
   "summary": "string"
 }`;
 
-    console.log('Sending request to Lovable AI Gateway...');
+    console.log('Sending request to Google Gemini API...');
     
     // Send streaming updates to client
     const encoder = new TextEncoder();
@@ -142,32 +142,39 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
           // Send initial progress
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 10, message: 'Analyzing credit reports...' })}\n\n`));
 
-          const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          // Use Google Gemini API directly
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Please analyze the following credit report(s) from ${bureauNames.join(', ')}:\n\n${combinedContent}` }
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    { text: `${systemPrompt}\n\nPlease analyze the following credit report(s) from ${bureauNames.join(', ')}:\n\n${combinedContent}` }
+                  ]
+                }
               ],
-              response_format: { type: 'json_object' }
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: 0.1,
+                maxOutputTokens: 8192
+              }
             }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('AI Gateway error:', response.status, errorText);
+            console.error('Gemini API error:', response.status, errorText);
             
             if (response.status === 429) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Rate limit exceeded. Please try again later.' })}\n\n`));
-            } else if (response.status === 402) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'AI credits exhausted. Please add credits to continue.' })}\n\n`));
+            } else if (response.status === 403) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Invalid API key or access denied.' })}\n\n`));
             } else {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'AI analysis failed. Please try again.' })}\n\n`));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: `Gemini API error: ${response.status}` })}\n\n`));
             }
             controller.close();
             return;
@@ -176,11 +183,13 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 50, message: 'Processing AI response...' })}\n\n`));
 
           const data = await response.json();
-          console.log('AI response received');
+          console.log('Gemini response received');
 
-          const content = data.choices?.[0]?.message?.content;
+          // Extract content from Gemini response format
+          const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (!content) {
-            throw new Error('No content in AI response');
+            console.error('Unexpected Gemini response structure:', JSON.stringify(data));
+            throw new Error('No content in Gemini response');
           }
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Parsing results...' })}\n\n`));
@@ -190,7 +199,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
           try {
             analysisResult = JSON.parse(content);
           } catch (parseError) {
-            console.error('Failed to parse AI response as JSON:', parseError);
+            console.error('Failed to parse Gemini response as JSON:', parseError);
             // Try to extract JSON from the response
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
