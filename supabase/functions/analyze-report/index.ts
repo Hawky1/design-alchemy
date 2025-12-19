@@ -33,7 +33,7 @@ const corsHeaders = {
 
 // Rate limiting config
 const RATE_LIMIT_WINDOW_MINUTES = 60;
-const RATE_LIMIT_MAX_REQUESTS = 5;
+const RATE_LIMIT_MAX_REQUESTS = 20;
 
 // Max payload size: 10MB
 const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024; // 10,485,760 bytes
