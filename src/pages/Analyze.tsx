@@ -181,8 +181,8 @@ export default function Analyze() {
                 <div className="ambient-orb ambient-orb-secondary absolute bottom-[10%] -right-[5%] w-[30%] h-[30%]" />
             </div>
 
-            <header className="fixed top-0 left-0 right-0 z-50 glass-panel-strong border-b border-border">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <header className="fixed top-0 left-0 right-0 z-50 glass-dark">
+                <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img
                             src="/carc-logo.webp"
