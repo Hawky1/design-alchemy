@@ -242,14 +242,14 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       <td className="px-4 py-3 text-sm text-neutral-100 font-medium">{account?.accountName ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-300 font-mono">{account?.accountNumber ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                           account?.status === 'Open' || account?.status === 'Current'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-green-950/60 text-green-300 border-green-700'
                             : account?.status === 'Closed'
-                            ? 'bg-neutral-200 text-neutral-700'
+                            ? 'bg-neutral-800 text-neutral-300 border-neutral-600'
                             : account?.status === 'Derogatory' || account?.status === 'Collection'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-yellow-100 text-yellow-700'
+                            ? 'bg-red-950/60 text-red-300 border-red-700'
+                            : 'bg-yellow-950/60 text-yellow-300 border-yellow-700'
                         }`}>
                           {account?.status ?? 'Unknown'}
                         </span>
