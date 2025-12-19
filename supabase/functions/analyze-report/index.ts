@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,33 +34,57 @@ serve(async (req) => {
       transunion: transunionFile?.name
     });
 
-    // Read file contents (as text for now - PDF parsing would need additional processing)
-    const fileContents: string[] = [];
+    // Convert PDF files to base64 for Gemini's multimodal API
+    const fileParts: Array<{ inline_data: { mime_type: string; data: string } } | { text: string }> = [];
     const bureauNames: string[] = [];
     
     if (experianFile) {
-      const text = await experianFile.text();
-      fileContents.push(`EXPERIAN REPORT:\n${text.substring(0, 50000)}`);
+      const arrayBuffer = await experianFile.arrayBuffer();
+      const base64Data = base64Encode(arrayBuffer);
+      fileParts.push({
+        inline_data: {
+          mime_type: "application/pdf",
+          data: base64Data
+        }
+      });
+      fileParts.push({ text: "The above PDF is the EXPERIAN credit report." });
       bureauNames.push('Experian');
+      console.log(`Experian file converted to base64, size: ${base64Data.length} chars`);
     }
+    
     if (equifaxFile) {
-      const text = await equifaxFile.text();
-      fileContents.push(`EQUIFAX REPORT:\n${text.substring(0, 50000)}`);
+      const arrayBuffer = await equifaxFile.arrayBuffer();
+      const base64Data = base64Encode(arrayBuffer);
+      fileParts.push({
+        inline_data: {
+          mime_type: "application/pdf",
+          data: base64Data
+        }
+      });
+      fileParts.push({ text: "The above PDF is the EQUIFAX credit report." });
       bureauNames.push('Equifax');
+      console.log(`Equifax file converted to base64, size: ${base64Data.length} chars`);
     }
+    
     if (transunionFile) {
-      const text = await transunionFile.text();
-      fileContents.push(`TRANSUNION REPORT:\n${text.substring(0, 50000)}`);
+      const arrayBuffer = await transunionFile.arrayBuffer();
+      const base64Data = base64Encode(arrayBuffer);
+      fileParts.push({
+        inline_data: {
+          mime_type: "application/pdf",
+          data: base64Data
+        }
+      });
+      fileParts.push({ text: "The above PDF is the TRANSUNION credit report." });
       bureauNames.push('TransUnion');
+      console.log(`TransUnion file converted to base64, size: ${base64Data.length} chars`);
     }
 
-    if (fileContents.length === 0) {
+    if (fileParts.length === 0) {
       throw new Error('No credit report files provided');
     }
 
-    const combinedContent = fileContents.join('\n\n---\n\n');
-    
-    const systemPrompt = `You are an expert credit report analyst specializing in FCRA (Fair Credit Reporting Act) violations and consumer credit rights. Analyze the provided credit report(s) and identify:
+    const systemPrompt = `You are an expert credit report analyst specializing in FCRA (Fair Credit Reporting Act) violations and consumer credit rights. Analyze the provided credit report PDF(s) and identify:
 
 1. Credit Score information
 2. Payment history analysis
@@ -132,7 +157,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
   "summary": "string"
 }`;
 
-    console.log('Sending request to Google Gemini API...');
+    console.log('Sending request to Google Gemini API with', bureauNames.length, 'PDF files...');
     
     // Send streaming updates to client
     const encoder = new TextEncoder();
@@ -140,9 +165,18 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
       async start(controller) {
         try {
           // Send initial progress
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 10, message: 'Analyzing credit reports...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 10, message: 'Uploading and processing PDF files...' })}\n\n`));
 
-          // Use Google Gemini API directly
+          // Build the parts array: system prompt first, then PDF files with labels
+          const parts = [
+            { text: systemPrompt },
+            { text: `Please analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}.` },
+            ...fileParts
+          ];
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 30, message: 'Analyzing credit reports with AI...' })}\n\n`));
+
+          // Use Google Gemini API with multimodal PDF support
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
@@ -152,9 +186,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
               contents: [
                 {
                   role: 'user',
-                  parts: [
-                    { text: `${systemPrompt}\n\nPlease analyze the following credit report(s) from ${bureauNames.join(', ')}:\n\n${combinedContent}` }
-                  ]
+                  parts: parts
                 }
               ],
               generationConfig: {
@@ -173,6 +205,9 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Rate limit exceeded. Please try again later.' })}\n\n`));
             } else if (response.status === 403) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Invalid API key or access denied.' })}\n\n`));
+            } else if (response.status === 400) {
+              console.error('Bad request - check PDF format or size');
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Error processing PDF files. Please ensure files are valid PDFs.' })}\n\n`));
             } else {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: `Gemini API error: ${response.status}` })}\n\n`));
             }
@@ -180,10 +215,10 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
             return;
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 50, message: 'Processing AI response...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 60, message: 'Processing AI response...' })}\n\n`));
 
           const data = await response.json();
-          console.log('Gemini response received');
+          console.log('Gemini response received successfully');
 
           // Extract content from Gemini response format
           const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -192,7 +227,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
             throw new Error('No content in Gemini response');
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Parsing results...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Parsing analysis results...' })}\n\n`));
 
           // Parse the JSON response
           let analysisResult;
@@ -209,6 +244,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
             }
           }
 
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 95, message: 'Finalizing report...' })}\n\n`));
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'completed', result: analysisResult })}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
