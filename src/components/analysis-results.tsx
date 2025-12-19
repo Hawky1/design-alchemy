@@ -33,6 +33,23 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
     return 'text-neutral-400';
   };
 
+  // Normalize status values - extract clean status from potentially long strings
+  const normalizeStatus = (status: string | undefined): string => {
+    if (!status) return 'Unknown';
+    const s = status.toLowerCase();
+    if (s.includes('charge') && s.includes('off')) return 'Charge-Off';
+    if (s.includes('collection')) return 'Collection';
+    if (s.includes('derogatory')) return 'Derogatory';
+    if (s.includes('closed')) return 'Closed';
+    if (s.includes('paid')) return 'Paid';
+    if (s.includes('current')) return 'Current';
+    if (s.includes('open')) return 'Open';
+    if (s.includes('late')) return 'Late';
+    // If status is too long (likely a description), return generic
+    if (status.length > 20) return 'Review';
+    return status;
+  };
+
   const totalViolations = results?.legalSummary?.totalViolations ?? results?.fcraViolations?.length ?? 0;
   const highSeverityCount = results?.fcraViolations?.filter(v => v?.severity === 'High')?.length ?? 0;
   const mediumSeverityCount = results?.fcraViolations?.filter(v => v?.severity === 'Medium')?.length ?? 0;
@@ -242,17 +259,22 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       <td className="px-4 py-3 text-sm text-neutral-100">{account?.accountName ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-300 font-mono">{account?.accountNumber ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          account?.status === 'Open' || account?.status === 'Current'
-                            ? 'bg-green-100 text-green-700'
-                            : account?.status === 'Closed'
-                            ? 'bg-neutral-200 text-neutral-700'
-                            : account?.status === 'Derogatory' || account?.status === 'Collection'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {account?.status ?? 'Unknown'}
-                        </span>
+                        {(() => {
+                          const normalizedStatus = normalizeStatus(account?.status);
+                          return (
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              normalizedStatus === 'Open' || normalizedStatus === 'Current' || normalizedStatus === 'Paid'
+                                ? 'bg-green-100 text-green-700'
+                                : normalizedStatus === 'Closed'
+                                ? 'bg-neutral-200 text-neutral-700'
+                                : normalizedStatus === 'Derogatory' || normalizedStatus === 'Collection' || normalizedStatus === 'Charge-Off'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {normalizedStatus}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-neutral-100">{account?.balance ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-300 max-w-xs truncate" title={account?.comments ?? ''}>
