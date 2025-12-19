@@ -6,40 +6,27 @@ import carcLogo from '@/assets/carc-logo.webp';
 export default function Index() {
     return (
         <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
-            {/* Laser Grid Background */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="laser-grid" />
-                <div className="laser-line-h" style={{ top: '20%', animationDelay: '0s' }} />
-                <div className="laser-line-h" style={{ top: '50%', animationDelay: '2s' }} />
-                <div className="laser-line-h" style={{ top: '80%', animationDelay: '4s' }} />
-                <div className="laser-line-v" style={{ left: '25%', animationDelay: '1s' }} />
-                <div className="laser-line-v" style={{ left: '75%', animationDelay: '3s' }} />
-            </div>
-
             {/* Ambient Background Orbs */}
             <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="ambient-orb ambient-orb-primary absolute -top-[10%] -left-[10%] w-[50%] h-[50%]" />
-                <div className="ambient-orb ambient-orb-secondary absolute bottom-[10%] -right-[5%] w-[40%] h-[40%]" />
-                <div className="ambient-orb ambient-orb-primary absolute top-[60%] left-[20%] w-[25%] h-[25%]" />
+                <div className="ambient-orb ambient-orb-primary absolute -top-[10%] -left-[10%] w-[40%] h-[40%]" />
+                <div className="ambient-orb ambient-orb-secondary absolute bottom-[10%] -right-[5%] w-[30%] h-[30%]" />
+                <div className="ambient-orb ambient-orb-primary absolute top-[60%] left-[20%] w-[20%] h-[20%]" />
             </div>
 
-            {/* Central Pulse */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[150px] animate-pulse-burst pointer-events-none -z-10" />
-
-            {/* Header - White Background */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
+                <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <img
                             src={carcLogo}
                             alt="Consumer Advocate Resolution Center"
                             width={180}
                             height={60}
-                            className="h-12 w-auto"
+                            className="h-14 w-auto"
                         />
                     </div>
                     <Link to="/analyze">
-                        <button className="btn-pill-sm bg-primary text-primary-foreground hover:bg-primary/90 btn-glow">
+                        <button className="btn-pill bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300">
                             Analyze Report
                         </button>
                     </Link>
@@ -47,22 +34,19 @@ export default function Index() {
             </header>
 
             {/* Hero Section */}
-            <section className="pt-36 pb-24 px-6">
+            <section className="pt-32 pb-24 px-6">
                 <div className="max-w-7xl mx-auto text-center">
                     <div className="animate-reveal">
-                        <div className="inline-flex items-center gap-3 px-5 py-2.5 mb-8 rounded-full border border-border bg-card/50 backdrop-blur-md">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                            </span>
-                            <span className="text-muted-foreground font-medium text-sm">100% FREE Credit Analysis Tool</span>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-primary/30 bg-primary/10">
+                            <div className="status-dot bg-primary" />
+                            <span className="text-primary font-medium text-sm">100% FREE Credit Analysis Tool</span>
                         </div>
                     </div>
                     
                     <h1 className="animate-reveal-delay-1 text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight">
                         Get a Complete Credit
                         <br />
-                        <span className="gradient-text-pink">Analysis in Minutes</span>
+                        <span className="gradient-text-primary">Analysis in Minutes</span>
                     </h1>
                     
                     <p className="animate-reveal-delay-2 text-lg sm:text-xl text-muted-foreground font-light max-w-3xl mx-auto mb-8 leading-relaxed">
@@ -70,19 +54,19 @@ export default function Index() {
                     </p>
                     
                     <div className="animate-reveal-delay-2 flex flex-wrap justify-center gap-3 mb-10">
-                        <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/30 text-sm font-medium">Experian</span>
-                        <span className="px-4 py-1.5 rounded-full bg-info/10 text-info border border-info/30 text-sm font-medium">Equifax</span>
-                        <span className="px-4 py-1.5 rounded-full bg-success/10 text-success border border-success/30 text-sm font-medium">TransUnion</span>
+                        <span className="px-4 py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-sm font-medium">Experian</span>
+                        <span className="px-4 py-1.5 rounded-full bg-info/15 text-info border border-info/30 text-sm font-medium">Equifax</span>
+                        <span className="px-4 py-1.5 rounded-full bg-success/15 text-success border border-success/30 text-sm font-medium">TransUnion</span>
                     </div>
                     
                     <div className="animate-reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/analyze">
-                            <button className="btn-pill bg-foreground text-background font-semibold text-lg btn-glow-white hover:bg-foreground/90">
+                            <button className="btn-pill btn-glow bg-primary text-primary-foreground font-semibold text-lg">
                                 Start Free Credit Analysis
                             </button>
                         </Link>
                         <Link to="/analyze">
-                            <button className="btn-pill border border-border bg-card/50 backdrop-blur-sm text-foreground hover:bg-card hover:border-primary/30 font-medium">
+                            <button className="btn-pill border border-border bg-transparent text-foreground hover:bg-card-hover font-medium">
                                 Learn More
                             </button>
                         </Link>
@@ -138,10 +122,8 @@ export default function Index() {
                         ].map((feature, idx) => (
                             <div
                                 key={idx}
-                                className="group card-dark rounded-3xl p-8">
-                                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
-                                    <feature.icon className="w-7 h-7 text-primary" />
-                                </div>
+                                className="group glass-panel rounded-3xl p-8 card-hover border-gradient">
+                                <feature.icon className="w-12 h-12 mb-5 text-primary" />
                                 <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
                                 <p className="text-muted-foreground font-light leading-relaxed">{feature.description}</p>
                             </div>
@@ -178,7 +160,7 @@ export default function Index() {
                                 ].map((violation, idx) => (
                                     <div
                                         key={idx}
-                                        className="card-dark rounded-2xl p-6 border border-warning/20">
+                                        className="glass-panel rounded-2xl p-6 border border-warning/20">
                                         <h3 className="text-lg font-semibold mb-2">{violation.title}</h3>
                                         <p className="text-muted-foreground text-sm font-light">{violation.desc}</p>
                                     </div>
@@ -198,7 +180,7 @@ export default function Index() {
 
                         <div className="relative z-10">
                             <div className="text-center mb-12">
-                                <div className="inline-block px-6 py-3 rounded-full bg-primary text-primary-foreground font-bold mb-6 glow-effect">
+                                <div className="inline-block px-6 py-3 rounded-full bg-primary text-primary-foreground font-bold mb-6 animate-pulse-glow">
                                     PROTECT YOUR CONSUMER RIGHTS
                                 </div>
                                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold mb-4 tracking-tight">Found Violations? We Fight For You!</h2>
@@ -211,7 +193,7 @@ export default function Index() {
                             </div>
 
                             {/* Recent Settlements Carousel */}
-                            <div className="card-dark rounded-2xl p-8 mb-8">
+                            <div className="glass-panel rounded-2xl p-8 mb-8">
                                 <h3 className="text-2xl font-semibold mb-6 text-center">Recent Settlements</h3>
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                                     {[
@@ -231,7 +213,7 @@ export default function Index() {
                             </div>
 
                             {/* What We Do */}
-                            <div className="card-dark rounded-2xl p-8 mb-8">
+                            <div className="glass-panel rounded-2xl p-8 mb-8">
                                 <h3 className="text-2xl font-semibold mb-6 text-center">How C.A.R.C Fights For You</h3>
                                 <div className="grid md:grid-cols-2 gap-6">
                                     {[
@@ -259,7 +241,7 @@ export default function Index() {
                                     <p className="text-lg mb-4 font-light">Register to Learn More on How to Protect Your Rights!</p>
                                     <p className="text-sm mb-6 text-info">Limited for First 100 Participants Only</p>
                                     <a href="tel:1-888-817-2272">
-                                        <button className="btn-pill bg-foreground text-background font-bold hover:bg-info hover:text-info-foreground transition-all btn-glow-white">
+                                        <button className="btn-pill bg-foreground text-background font-bold hover:bg-info hover:text-info-foreground transition-all">
                                             Call 1-888-817-CARC (2272)
                                         </button>
                                     </a>
@@ -268,7 +250,7 @@ export default function Index() {
 
                             {/* CTA */}
                             <div className="text-center">
-                                <div className="card-dark rounded-2xl p-8 max-w-3xl mx-auto">
+                                <div className="glass-panel rounded-2xl p-8 max-w-3xl mx-auto">
                                     <p className="text-lg mb-4 font-light">
                                         If you've been searching for a "Consumer Advocate" - you found us!
                                     </p>
@@ -303,7 +285,7 @@ export default function Index() {
                                 { title: 'Equifax', domain: 'equifax.com', colorClass: 'info', info: 'Detailed account information' },
                                 { title: 'TransUnion', domain: 'transunion.com', colorClass: 'success', info: 'Comprehensive credit history' }
                             ].map((bureau, idx) => (
-                                <div key={idx} className={`card-dark rounded-2xl p-6 border-2 border-${bureau.colorClass}/30`}>
+                                <div key={idx} className={`glass-panel rounded-2xl p-6 border-2 border-${bureau.colorClass}/30`}>
                                     <h3 className={`text-xl font-bold mb-3 text-${bureau.colorClass}`}>{bureau.title}</h3>
                                     <p className="text-muted-foreground text-sm mb-3 font-light">Visit <span className="font-semibold text-foreground">{bureau.domain}</span> to download your report</p>
                                     <ul className="text-muted-foreground text-sm space-y-2 font-light">
@@ -338,7 +320,7 @@ export default function Index() {
                             { step: '3', title: 'Get Your Results', desc: 'Receive detailed recommendations, improvement strategies, and next steps to fix your credit' }
                         ].map((item) => (
                             <div key={item.step} className="text-center">
-                                <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6 bg-primary text-primary-foreground glow-effect">
+                                <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6 bg-primary text-primary-foreground shadow-glow">
                                     {item.step}
                                 </div>
                                 <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
@@ -390,7 +372,7 @@ export default function Index() {
                                     ]
                                 }
                             ].map((section, idx) => (
-                                <div key={idx} className={`card-dark rounded-2xl p-6 border-l-4 border-l-${section.colorClass}`}>
+                                <div key={idx} className={`glass-panel rounded-2xl p-6 border-l-4 border-l-${section.colorClass}`}>
                                     <h3 className="text-lg font-semibold mb-4">{section.title}</h3>
                                     <ul className="space-y-3">
                                         {section.items.map((item, itemIdx) => (
