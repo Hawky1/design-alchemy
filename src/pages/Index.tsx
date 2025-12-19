@@ -36,7 +36,7 @@ export default function Index() {
             {/* Hero Section */}
             <section className="relative pt-32 pb-24 px-6 min-h-[90vh] flex items-center overflow-hidden isolate">
                 {/* Video Background */}
-                <div className="absolute inset-0 z-0">
+                <div className="absolute inset-0 z-0 bg-black">
                     <video
                         autoPlay
                         loop
@@ -44,7 +44,7 @@ export default function Index() {
                         playsInline
                         className="absolute inset-0 w-full h-full object-cover"
                     >
-                        <source src="/videos/hero-background.mp4" type="video/mp4" />
+                        <source src="https://storage.googleapis.com/msgsndr/FuOewPgnMEW1CaeIftBR/media/6944c7535b256b67cfc5cf3d.mp4" type="video/mp4" />
                     </video>
                     {/* Dark overlay for text readability */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-[1]" />
