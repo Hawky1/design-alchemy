@@ -90,9 +90,9 @@ export default function Analyze() {
             if (files.equifax) formData.append('equifax', files.equifax);
             if (files.transunion) formData.append('transunion', files.transunion);
 
-            // Use the Supabase edge function URL from environment
-            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-            const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            // Use the Supabase edge function URL
+            const SUPABASE_URL = "https://viotepfhdproajmntrfp.supabase.co";
+            const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpb3RlcGZoZHByb2FqbW50cmZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODgyNDUsImV4cCI6MjA4MTY2NDI0NX0.7vdwcZxpSFn2BFl1_7R_Wqng0OpTrBmzjFlf2K_NWqs";
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze-report`, {
                 method: 'POST',
