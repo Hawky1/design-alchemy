@@ -3,10 +3,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Allowed origins - add your production domain here
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'https://lovable.dev',
+  'https://viotepfhdproajmntrfp.lovableproject.com',
+  // Add your custom domain when you have one
+];
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Rate limiting config
+const RATE_LIMIT_WINDOW_MINUTES = 60;
+const RATE_LIMIT_MAX_REQUESTS = 5;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -16,6 +29,39 @@ serve(async (req) => {
 
   try {
     console.log('Analyze report function called');
+    
+    // === ORIGIN CHECK ===
+    const origin = req.headers.get('origin');
+    const referer = req.headers.get('referer');
+    
+    // Block requests without origin (Postman, curl, etc.)
+    if (!origin && !referer) {
+      console.warn('Request blocked: No origin or referer header');
+      return new Response(
+        JSON.stringify({ error: 'Direct API access is not allowed. Please use the web application.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Verify origin is in allowed list
+    const requestOrigin = origin || (referer ? new URL(referer).origin : null);
+    if (requestOrigin && !ALLOWED_ORIGINS.some(allowed => requestOrigin.startsWith(allowed))) {
+      console.warn(`Request blocked: Origin not allowed - ${requestOrigin}`);
+      return new Response(
+        JSON.stringify({ error: 'Access denied. This API is only accessible from authorized applications.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`Origin verified: ${requestOrigin}`);
+    
+    // === EXTRACT CLIENT IP ===
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+      || req.headers.get('x-real-ip') 
+      || req.headers.get('cf-connecting-ip')
+      || 'unknown';
+    
+    console.log(`Client IP: ${clientIP}`);
     
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     if (!GEMINI_API_KEY) {
@@ -27,6 +73,41 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // === RATE LIMITING CHECK ===
+    if (clientIP !== 'unknown') {
+      const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
+      
+      const { count, error: countError } = await supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('ip_address', clientIP)
+        .gte('created_at', oneHourAgo);
+      
+      if (countError) {
+        console.error('Rate limit check failed:', countError);
+      } else {
+        console.log(`Rate limit check: ${count}/${RATE_LIMIT_MAX_REQUESTS} requests from IP ${clientIP} in last ${RATE_LIMIT_WINDOW_MINUTES} minutes`);
+        
+        if (count !== null && count >= RATE_LIMIT_MAX_REQUESTS) {
+          console.warn(`Rate limit exceeded for IP: ${clientIP}`);
+          return new Response(
+            JSON.stringify({ 
+              error: 'Rate limit exceeded. You have reached the maximum number of analyses allowed per hour. Please try again later.',
+              retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+            }),
+            { 
+              status: 429, 
+              headers: { 
+                ...corsHeaders, 
+                'Content-Type': 'application/json',
+                'Retry-After': String(RATE_LIMIT_WINDOW_MINUTES * 60)
+              } 
+            }
+          );
+        }
+      }
+    }
 
     // Parse the form data to get uploaded files
     const formData = await req.formData();
@@ -44,16 +125,20 @@ serve(async (req) => {
       transunion: transunionFile?.name
     });
     
-    // Save lead data to database
+    // Save lead data to database (including IP address)
     if (leadName && leadEmail) {
       const { error: leadError } = await supabaseAdmin
         .from('leads')
-        .insert({ name: leadName, email: leadEmail });
+        .insert({ 
+          name: leadName, 
+          email: leadEmail,
+          ip_address: clientIP !== 'unknown' ? clientIP : null
+        });
       
       if (leadError) {
         console.error('Failed to save lead:', leadError);
       } else {
-        console.log('Lead saved successfully:', { name: leadName, email: leadEmail });
+        console.log('Lead saved successfully:', { name: leadName, email: leadEmail, ip: clientIP });
       }
     }
 
