@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,11 @@ serve(async (req) => {
       throw new Error('Gemini API key not configured');
     }
 
+    // Initialize Supabase admin client (service role)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Parse the form data to get uploaded files
     const formData = await req.formData();
     const experianFile = formData.get('experian') as File | null;
@@ -38,10 +44,18 @@ serve(async (req) => {
       transunion: transunionFile?.name
     });
     
-    console.log('Lead data received:', {
-      name: leadName,
-      email: leadEmail
-    });
+    // Save lead data to database
+    if (leadName && leadEmail) {
+      const { error: leadError } = await supabaseAdmin
+        .from('leads')
+        .insert({ name: leadName, email: leadEmail });
+      
+      if (leadError) {
+        console.error('Failed to save lead:', leadError);
+      } else {
+        console.log('Lead saved successfully:', { name: leadName, email: leadEmail });
+      }
+    }
 
     // Convert PDF files to base64 for Gemini's multimodal API
     const fileParts: Array<{ inline_data: { mime_type: string; data: string } } | { text: string }> = [];
