@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, Upload, Send, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BureauFiles {
   experian: File | null;
@@ -65,48 +66,34 @@ const ApiTest = () => {
     setCurrentResponse("");
     startTimeRef.current = Date.now();
 
-    const supabaseUrl = "https://viotepfhdproajmntrfp.supabase.co";
-    
     try {
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/analyze-report`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Authentication required. Please log in to use this feature.");
+      }
+
+      const { data, error } = await supabase.functions.invoke('analyze-report', {
+        body: formData,
+      });
 
       const responseTime = Date.now() - startTimeRef.current;
       
-      if (!response.ok) {
-        const errorText = await response.text();
+      if (error) {
         const log: ResponseLog = {
           timestamp: new Date(),
           responseTime,
-          status: `Error ${response.status}`,
-          rawResponse: errorText,
+          status: `Error`,
+          rawResponse: error.message || JSON.stringify(error),
           bureausSubmitted,
         };
         setResponseLogs((prev) => [log, ...prev]);
-        setCurrentResponse(errorText);
+        setCurrentResponse(error.message || JSON.stringify(error));
         return;
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          fullResponse += chunk;
-          setCurrentResponse(fullResponse);
-        }
-      }
+      const fullResponse = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      setCurrentResponse(fullResponse);
 
       const finalResponseTime = Date.now() - startTimeRef.current;
       

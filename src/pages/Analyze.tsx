@@ -1,11 +1,11 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, X, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AnalysisResults from '@/components/analysis-results';
 import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import carcLogo from '@/assets/carc-logo.webp';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BureauFiles {
     experian: File | null;
@@ -85,22 +85,40 @@ export default function Analyze() {
         setProgress(0);
 
         try {
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setError('Authentication required. Please log in to analyze credit reports.');
+                setAnalyzing(false);
+                return;
+            }
+
             const formData = new FormData();
             if (files.experian) formData.append('experian', files.experian);
             if (files.equifax) formData.append('equifax', files.equifax);
             if (files.transunion) formData.append('transunion', files.transunion);
 
-            // Use the Supabase edge function URL
-            const SUPABASE_URL = "https://viotepfhdproajmntrfp.supabase.co";
-            const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpb3RlcGZoZHByb2FqbW50cmZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODgyNDUsImV4cCI6MjA4MTY2NDI0NX0.7vdwcZxpSFn2BFl1_7R_Wqng0OpTrBmzjFlf2K_NWqs";
-
-            const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze-report`, {
-                method: 'POST',
+            // Use the Supabase client to invoke the edge function (handles auth automatically)
+            const { data, error: invokeError } = await supabase.functions.invoke('analyze-report', {
                 body: formData,
-                headers: {
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                }
             });
+            
+            if (invokeError) {
+                throw new Error(invokeError.message || 'Analysis request failed');
+            }
+            
+            // Handle response data
+            if (data?.status === 'completed' && data?.result) {
+                setResults(data.result as AnalysisResult);
+                setProgress(100);
+                setAnalyzing(false);
+                return;
+            } else if (data?.status === 'error') {
+                throw new Error(data?.message || 'Analysis failed');
+            }
+            
+            // For streaming responses or raw data
+            const response = { ok: true, body: null } as Response;
 
             if (!response?.ok) {
                 throw new Error('Analysis request failed (Backend not connected)');
