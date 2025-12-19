@@ -65,9 +65,11 @@ const ApiTest = () => {
     setCurrentResponse("");
     startTimeRef.current = Date.now();
 
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
+    
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-report`,
+        `${supabaseUrl}/functions/v1/analyze-report`,
         {
           method: "POST",
           body: formData,
