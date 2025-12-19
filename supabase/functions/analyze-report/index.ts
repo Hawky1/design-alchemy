@@ -12,6 +12,16 @@ const ALLOWED_ORIGINS = [
   // Add your custom domain when you have one
 ];
 
+// Function to check if origin is allowed (includes *.lovableproject.com pattern)
+function isOriginAllowed(origin: string | null): boolean {
+  if (!origin) return false;
+  // Check exact matches
+  if (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) return true;
+  // Check lovableproject.com wildcard pattern
+  if (origin.match(/^https:\/\/[a-z0-9-]+\.lovableproject\.com$/)) return true;
+  return false;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -63,7 +73,7 @@ serve(async (req) => {
     
     // Verify origin is in allowed list
     const requestOrigin = origin || (referer ? new URL(referer).origin : null);
-    if (requestOrigin && !ALLOWED_ORIGINS.some(allowed => requestOrigin.startsWith(allowed))) {
+    if (!isOriginAllowed(requestOrigin)) {
       console.warn(`Request blocked: Origin not allowed - ${requestOrigin}`);
       return new Response(
         JSON.stringify({ error: 'Access denied. This API is only accessible from authorized applications.' }),
