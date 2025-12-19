@@ -26,7 +26,7 @@ export default function Index() {
                         />
                     </div>
                     <Link to="/analyze">
-                        <button className="btn-pill bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300">
+                        <button className="px-4 py-1.5 text-sm rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 font-medium">
                             Analyze Report
                         </button>
                     </Link>
