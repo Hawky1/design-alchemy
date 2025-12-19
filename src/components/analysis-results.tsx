@@ -226,23 +226,23 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
               <h2 className="text-2xl font-bold text-neutral-100">Account Analysis</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead className="bg-neutral-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-200">Account Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-200">Account #</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-200">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-200">Balance</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-200">Comments</th>
+                    <th className="w-[18%] px-4 py-3 text-left text-sm font-semibold text-neutral-200">Account Name</th>
+                    <th className="w-[18%] px-4 py-3 text-left text-sm font-semibold text-neutral-200">Account #</th>
+                    <th className="w-[12%] px-4 py-3 text-left text-sm font-semibold text-neutral-200">Status</th>
+                    <th className="w-[12%] px-4 py-3 text-left text-sm font-semibold text-neutral-200">Balance</th>
+                    <th className="w-[40%] px-4 py-3 text-left text-sm font-semibold text-neutral-200">Comments</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-700">
                   {(results?.accountAnalysis ?? [])?.slice?.(0, 50)?.map?.((account, idx) => (
-                    <tr key={idx} className="hover:bg-neutral-800/50">
-                      <td className="px-4 py-3 text-sm text-neutral-100">{account?.accountName ?? 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-300 font-mono">{account?.accountNumber ?? 'N/A'}</td>
+                    <tr key={idx} className="hover:bg-neutral-800/50 align-top">
+                      <td className="px-4 py-3 text-sm text-neutral-100 break-words">{account?.accountName ?? 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-300 font-mono break-all">{account?.accountNumber ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                           account?.status === 'Open' || account?.status === 'Current'
                             ? 'bg-green-100 text-green-700'
                             : account?.status === 'Closed'
@@ -254,9 +254,11 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                           {account?.status ?? 'Unknown'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-neutral-100">{account?.balance ?? 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-300 max-w-xs truncate" title={account?.comments ?? ''}>
-                        {account?.comments ?? '-'}
+                      <td className="px-4 py-3 text-sm font-medium text-neutral-100 whitespace-nowrap">{account?.balance ?? 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="inline-block px-3 py-2 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-900 leading-relaxed">
+                          {account?.comments ?? '-'}
+                        </span>
                       </td>
                     </tr>
                   ))}
