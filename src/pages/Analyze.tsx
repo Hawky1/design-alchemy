@@ -113,68 +113,62 @@ export default function Analyze() {
             formData.append('leadName', lead.name);
             formData.append('leadEmail', lead.email);
 
-            // Use the Supabase client to invoke the edge function
-            const { data, error: invokeError } = await supabase.functions.invoke('analyze-report', {
-                body: formData,
-            });
-            
-            if (invokeError) {
-                throw new Error(invokeError.message || 'Analysis request failed');
-            }
-            
-            // Handle response data
-            if (data?.status === 'completed' && data?.result) {
-                setResults(data.result as AnalysisResult);
-                setProgress(100);
-                setAnalyzing(false);
-                return;
-            } else if (data?.status === 'error') {
-                throw new Error(data?.message || 'Analysis failed');
-            }
-            
-            // For streaming responses or raw data
-            const response = { ok: true, body: null } as Response;
+            // Use fetch directly for streaming SSE response (supabase.functions.invoke truncates large responses)
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-report`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                    },
+                    body: formData,
+                }
+            );
 
-            if (!response?.ok) {
-                throw new Error('Analysis request failed (Backend not connected)');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Analysis request failed');
             }
 
-            const reader = response?.body?.getReader();
+            // Read the streaming response
+            const reader = response.body?.getReader();
             const decoder = new TextDecoder();
             let partialRead = '';
 
-            while (true) {
-                const { done, value } = await reader?.read?.() ?? {};
-                if (done) break;
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                partialRead += decoder?.decode?.(value, { stream: true }) ?? '';
-                let lines = partialRead?.split?.('\n') ?? [];
-                partialRead = lines?.pop?.() ?? '';
+                    partialRead += decoder.decode(value, { stream: true });
+                    const lines = partialRead.split('\n');
+                    partialRead = lines.pop() || '';
 
-                for (const line of lines) {
-                    if (line?.startsWith?.('data: ')) {
-                        const data = line?.slice?.(6) ?? '';
-                        if (data === '[DONE]') {
-                            return;
-                        }
-                        try {
-                            const parsed = JSON.parse(data);
-                            if (parsed?.status === 'processing') {
-                                if (typeof parsed?.progress === 'number') {
-                                    setProgress(prev => Math.max(prev, Math.min(parsed.progress, 99)));
-                                } else {
-                                    setProgress(prev => Math.min(prev + 1, 99));
-                                }
-                            } else if (parsed?.status === 'completed') {
-                                setResults(parsed?.result as AnalysisResult);
-                                setProgress(100);
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') {
                                 setAnalyzing(false);
                                 return;
-                            } else if (parsed?.status === 'error') {
-                                throw new Error(parsed?.message || 'Analysis failed');
                             }
-                        } catch (e) {
-                            // Skip invalid JSON
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed?.status === 'processing') {
+                                    if (typeof parsed?.progress === 'number') {
+                                        setProgress(prev => Math.max(prev, Math.min(parsed.progress, 99)));
+                                    }
+                                } else if (parsed?.status === 'completed') {
+                                    setResults(parsed?.result as AnalysisResult);
+                                    setProgress(100);
+                                    setAnalyzing(false);
+                                    return;
+                                } else if (parsed?.status === 'error') {
+                                    throw new Error(parsed?.message || 'Analysis failed');
+                                }
+                            } catch (e) {
+                                // Skip invalid JSON lines
+                            }
                         }
                     }
                 }
