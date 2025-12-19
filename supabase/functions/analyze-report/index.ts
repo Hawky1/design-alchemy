@@ -84,25 +84,16 @@ serve(async (req) => {
       throw new Error('No credit report files provided');
     }
 
-    const systemPrompt = `You are an expert credit report analyst specializing in FCRA (Fair Credit Reporting Act) violations and consumer credit rights. Analyze the provided credit report PDF(s) and identify:
+    const systemPrompt = `You are an expert credit report analyst. Analyze the provided credit report PDF(s) and identify FCRA violations and issues.
 
-1. Credit Score information
-2. Payment history analysis
-3. Credit utilization
-4. Account details with potential issues
-5. FCRA violations (inaccurate info, outdated items, duplicate entries, missing disclosures, etc.)
-6. Cross-bureau discrepancies if multiple reports provided
-7. Legal case summary with compensation potential
-8. Actionable recommendations
+CRITICAL: Keep your response CONCISE. Limit arrays to maximum 10 items each. Use short descriptions.
 
-Be thorough and identify ALL potential violations. For each violation, explain the legal basis and potential remedies.
-
-IMPORTANT: Return your analysis as a JSON object with this exact structure:
+Return a JSON object with this structure:
 {
   "creditScore": {
     "current": number or null,
-    "range": "string",
-    "factors": ["string"]
+    "range": "Poor/Fair/Good/Excellent",
+    "factors": ["max 3 short factors"]
   },
   "paymentHistory": {
     "onTimePayments": number,
@@ -115,46 +106,19 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
     "totalCredit": number,
     "usedCredit": number,
     "utilizationPercentage": number,
-    "recommendation": "string"
+    "recommendation": "short recommendation"
   },
-  "accounts": [{
-    "name": "string",
-    "type": "string",
-    "balance": number,
-    "creditLimit": number,
-    "status": "string",
-    "paymentStatus": "string",
-    "remarks": "string",
-    "potentialViolation": "string or null",
-    "bureaus": ["string"],
-    "crossBureauDiscrepancy": "string or null"
-  }],
-  "fcraViolations": [{
-    "violationType": "string",
-    "severity": "High/Medium/Low",
-    "accountName": "string",
-    "issue": "string",
-    "legalBasis": "string",
-    "bureausAffected": ["string"],
-    "crossBureauDetails": "string or null",
-    "description": "string",
-    "actionableSteps": "string",
-    "legalCompensationPotential": "string"
-  }],
-  "recommendations": [{
-    "priority": "High/Medium/Low",
-    "title": "string",
-    "description": "string",
-    "potentialImpact": "string"
-  }],
+  "accounts": [{"name": "string", "type": "string", "balance": number, "status": "string", "potentialViolation": "string or null"}],
+  "fcraViolations": [{"violationType": "string", "severity": "High/Medium/Low", "accountName": "string", "issue": "short description", "legalBasis": "short basis"}],
+  "recommendations": [{"priority": "High/Medium/Low", "title": "string", "description": "short description"}],
   "legalCaseSummary": {
     "totalViolationsFound": number,
     "highPriorityViolations": number,
     "estimatedCompensationPotential": "string",
     "attorneyReferralRecommended": boolean,
-    "nextSteps": "string"
+    "nextSteps": "short next steps"
   },
-  "summary": "string"
+  "summary": "2-3 sentence summary"
 }`;
 
     console.log('Sending request to Google Gemini API with', bureauNames.length, 'PDF files...');
