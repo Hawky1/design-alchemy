@@ -449,18 +449,18 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
 
                       {/* Account Information */}
                       <div className="mb-4">
-                        <h3 className="font-bold text-lg text-neutral-100 mb-1">{violation?.issue ?? 'N/A'}</h3>
-                        <div className="flex flex-wrap gap-4 text-sm text-neutral-300 mb-2">
-                          <span><strong>Account:</strong> {violation?.accountName ?? 'N/A'}</span>
-                          <span><strong>Account #:</strong> ****{violation?.accountNumber ?? 'N/A'}</span>
+                        <h3 className="font-bold text-lg text-gray-900 mb-1">{violation?.issue ?? 'N/A'}</h3>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-700 mb-2">
+                          <span><strong className="text-gray-900">Account:</strong> {violation?.accountName ?? 'N/A'}</span>
+                          <span><strong className="text-gray-900">Account #:</strong> ****{violation?.accountNumber ?? 'N/A'}</span>
                         </div>
-                        <div className="flex flex-wrap gap-4 text-sm text-neutral-300 mb-2">
-                          <span><strong>Current Balance:</strong> ${violation?.currentBalance?.toLocaleString?.() ?? '0'}</span>
-                          <span><strong>Expected Balance:</strong> ${violation?.expectedBalance?.toLocaleString?.() ?? '0'}</span>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-700 mb-2">
+                          <span><strong className="text-gray-900">Current Balance:</strong> ${violation?.currentBalance?.toLocaleString?.() ?? '0'}</span>
+                          <span><strong className="text-gray-900">Expected Balance:</strong> ${violation?.expectedBalance?.toLocaleString?.() ?? '0'}</span>
                         </div>
                         {violation?.bureausAffected && (violation?.bureausAffected ?? [])?.length > 0 && (
                           <div className="flex gap-2 items-center mt-2">
-                            <strong className="text-sm text-neutral-300">Bureaus Affected:</strong>
+                            <strong className="text-sm text-gray-800">Bureaus Affected:</strong>
                             <div className="flex flex-wrap gap-1">
                               {(violation?.bureausAffected ?? [])?.map?.((bureau: string, bIdx: number) => (
                                 <span 
@@ -496,15 +496,15 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       )}
 
                       {/* Description */}
-                      <div className="bg-white p-4 rounded-lg border border-white/10 mb-4">
-                        <p className="text-sm font-semibold text-neutral-100 mb-1">Violation Details:</p>
-                        <p className="text-sm text-neutral-200">{violation?.description ?? 'N/A'}</p>
+                      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+                        <p className="text-sm font-semibold text-gray-800 mb-1">Violation Details:</p>
+                        <p className="text-sm text-gray-700">{violation?.description ?? 'N/A'}</p>
                       </div>
 
                       {/* Legal Basis */}
-                      <div className="bg-white p-4 rounded-lg border border-white/10 mb-4">
-                        <p className="text-sm font-semibold text-neutral-100 mb-1">Legal Basis:</p>
-                        <p className="text-sm text-neutral-200 font-mono">{violation?.legalBasis ?? 'N/A'}</p>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                        <p className="text-sm font-semibold text-gray-800 mb-1">Legal Basis:</p>
+                        <p className="text-sm text-gray-700 font-mono">{violation?.legalBasis ?? 'N/A'}</p>
                       </div>
 
                       {/* Documentation Needed */}
@@ -522,11 +522,11 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       {/* Recommendation */}
                       <div className={`p-4 rounded-lg border-2 ${
                         violation?.legalCompensationPotential === 'High'
-                          ? 'bg-green-50 border-green-400'
-                          : 'bg-gray-50 border-white/20'
+                          ? 'bg-green-100 border-green-400'
+                          : 'bg-gray-100 border-gray-300'
                       }`}>
-                        <p className="text-sm font-semibold text-neutral-100 mb-1">Recommendation:</p>
-                        <p className="text-sm text-neutral-200 font-medium">{violation?.recommendation ?? 'N/A'}</p>
+                        <p className="text-sm font-semibold text-gray-800 mb-1">Recommendation:</p>
+                        <p className="text-sm text-gray-700 font-medium">{violation?.recommendation ?? 'N/A'}</p>
                       </div>
                     </div>
                   </div>
