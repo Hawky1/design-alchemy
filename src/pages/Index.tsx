@@ -1,6 +1,7 @@
 
 import { Link } from 'react-router-dom';
 import { FileText, Shield, TrendingUp, AlertCircle, BarChart3, CheckCircle } from 'lucide-react';
+import carcLogo from '@/assets/carc-logo.webp';
 
 export default function Index() {
     return (
@@ -13,19 +14,19 @@ export default function Index() {
             </div>
 
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 glass-panel-strong border-b border-border">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-neutral-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <img
-                            src="/carc-logo.webp"
+                            src={carcLogo}
                             alt="Consumer Advocate Resolution Center"
                             width={180}
                             height={60}
-                            className="h-12 w-auto"
+                            className="h-14 w-auto"
                         />
                     </div>
                     <Link to="/analyze">
-                        <button className="btn-pill bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all duration-300">
+                        <button className="btn-pill bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300">
                             Analyze Report
                         </button>
                     </Link>
