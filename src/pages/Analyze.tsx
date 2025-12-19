@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, X, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import AnalysisResults from '@/components/analysis-results';
+import LeadCaptureDialog, { LeadData } from '@/components/lead-capture-dialog';
 import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import carcLogo from '@/assets/carc-logo.webp';
@@ -24,6 +25,8 @@ export default function Analyze() {
     const [results, setResults] = useState<AnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
+    const [showLeadDialog, setShowLeadDialog] = useState(false);
+    const [leadData, setLeadData] = useState<LeadData | null>(null);
 
     // Initialize video background
     useEffect(() => {
@@ -73,32 +76,44 @@ export default function Analyze() {
         setFiles(prev => ({ ...prev, [bureau]: null }));
     };
 
-    const handleAnalyze = async () => {
+    const handleAnalyzeClick = () => {
         const uploadedFiles = Object.values(files).filter(f => f !== null);
         if (uploadedFiles.length === 0) {
             setError('Please upload at least one credit report');
             return;
         }
+        
+        // If we already have lead data, proceed with analysis
+        if (leadData) {
+            handleAnalyze(leadData);
+        } else {
+            // Show lead capture dialog
+            setShowLeadDialog(true);
+        }
+    };
 
+    const handleLeadSubmit = (data: LeadData) => {
+        setLeadData(data);
+        setShowLeadDialog(false);
+        handleAnalyze(data);
+    };
+
+    const handleAnalyze = async (lead: LeadData) => {
         setAnalyzing(true);
         setError(null);
         setProgress(0);
 
         try {
-            // Check if user is authenticated
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError('Authentication required. Please log in to analyze credit reports.');
-                setAnalyzing(false);
-                return;
-            }
-
             const formData = new FormData();
             if (files.experian) formData.append('experian', files.experian);
             if (files.equifax) formData.append('equifax', files.equifax);
             if (files.transunion) formData.append('transunion', files.transunion);
+            
+            // Add lead data to the request
+            formData.append('leadName', lead.name);
+            formData.append('leadEmail', lead.email);
 
-            // Use the Supabase client to invoke the edge function (handles auth automatically)
+            // Use the Supabase client to invoke the edge function
             const { data, error: invokeError } = await supabase.functions.invoke('analyze-report', {
                 body: formData,
             });
@@ -411,7 +426,7 @@ export default function Analyze() {
 
                         {/* Analyze Button */}
                         <button
-                            onClick={handleAnalyze}
+                            onClick={handleAnalyzeClick}
                             disabled={!hasAnyFile || analyzing}
                             className={`w-full btn-pill text-lg font-semibold transition-all ${
                                 !hasAnyFile || analyzing
@@ -425,10 +440,18 @@ export default function Analyze() {
                 </div>
 
                 {/* Security Notice */}
+                {/* Security Notice */}
                 <div className="mt-8 text-center text-sm text-muted-foreground animate-reveal-delay-2">
                     <p className="font-light">Your data is processed securely and never stored permanently</p>
                 </div>
             </div>
+
+            {/* Lead Capture Dialog */}
+            <LeadCaptureDialog
+                open={showLeadDialog}
+                onOpenChange={setShowLeadDialog}
+                onSubmit={handleLeadSubmit}
+            />
         </div>
     );
 }

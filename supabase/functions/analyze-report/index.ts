@@ -27,11 +27,20 @@ serve(async (req) => {
     const experianFile = formData.get('experian') as File | null;
     const equifaxFile = formData.get('equifax') as File | null;
     const transunionFile = formData.get('transunion') as File | null;
+    
+    // Get lead data
+    const leadName = formData.get('leadName') as string | null;
+    const leadEmail = formData.get('leadEmail') as string | null;
 
     console.log('Files received:', {
       experian: experianFile?.name,
       equifax: equifaxFile?.name,
       transunion: transunionFile?.name
+    });
+    
+    console.log('Lead data received:', {
+      name: leadName,
+      email: leadEmail
     });
 
     // Convert PDF files to base64 for Gemini's multimodal API
