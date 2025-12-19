@@ -67,27 +67,49 @@ const ApiTest = () => {
     startTimeRef.current = Date.now();
 
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-report', {
-        body: formData,
-      });
+      // Use fetch directly for streaming SSE response
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-report`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: formData,
+        }
+      );
 
-      const responseTime = Date.now() - startTimeRef.current;
-      
-      if (error) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        const responseTime = Date.now() - startTimeRef.current;
         const log: ResponseLog = {
           timestamp: new Date(),
           responseTime,
-          status: `Error`,
-          rawResponse: error.message || JSON.stringify(error),
+          status: `Error ${response.status}`,
+          rawResponse: errorText,
           bureausSubmitted,
         };
         setResponseLogs((prev) => [log, ...prev]);
-        setCurrentResponse(error.message || JSON.stringify(error));
+        setCurrentResponse(errorText);
         return;
       }
 
-      const fullResponse = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-      setCurrentResponse(fullResponse);
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          fullResponse += chunk;
+          setCurrentResponse(fullResponse);
+        }
+      }
 
       const finalResponseTime = Date.now() - startTimeRef.current;
       
