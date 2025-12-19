@@ -192,7 +192,7 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
               generationConfig: {
                 responseMimeType: 'application/json',
                 temperature: 0.1,
-                maxOutputTokens: 8192
+                maxOutputTokens: 65536
               }
             }),
           });
@@ -229,18 +229,52 @@ IMPORTANT: Return your analysis as a JSON object with this exact structure:
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Parsing analysis results...' })}\n\n`));
 
-          // Parse the JSON response
+          // Parse the JSON response with robust error handling
           let analysisResult;
           try {
             analysisResult = JSON.parse(content);
           } catch (parseError) {
             console.error('Failed to parse Gemini response as JSON:', parseError);
-            // Try to extract JSON from the response
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              analysisResult = JSON.parse(jsonMatch[0]);
-            } else {
-              throw new Error('Could not parse AI analysis results');
+            console.log('Raw content length:', content.length);
+            
+            // Try to repair truncated JSON by adding closing brackets
+            let repairedContent = content;
+            
+            // Count opening and closing braces/brackets
+            const openBraces = (content.match(/\{/g) || []).length;
+            const closeBraces = (content.match(/\}/g) || []).length;
+            const openBrackets = (content.match(/\[/g) || []).length;
+            const closeBrackets = (content.match(/\]/g) || []).length;
+            
+            // Try to close unclosed strings, arrays, and objects
+            // Remove trailing incomplete string if present
+            repairedContent = repairedContent.replace(/,\s*"[^"]*$/, '');
+            repairedContent = repairedContent.replace(/,\s*$/, '');
+            
+            // Add missing closing brackets and braces
+            for (let i = 0; i < openBrackets - closeBrackets; i++) {
+              repairedContent += ']';
+            }
+            for (let i = 0; i < openBraces - closeBraces; i++) {
+              repairedContent += '}';
+            }
+            
+            try {
+              analysisResult = JSON.parse(repairedContent);
+              console.log('Successfully repaired and parsed JSON');
+            } catch (repairError) {
+              console.error('JSON repair failed:', repairError);
+              // Return a minimal valid result
+              analysisResult = {
+                summary: "Analysis completed but response was truncated. Please try again with fewer reports or contact support.",
+                creditScore: { current: null, range: "Unknown", factors: [] },
+                paymentHistory: { onTimePayments: 0, latePayments: 0, missedPayments: 0, totalAccounts: 0, percentageOnTime: 0 },
+                creditUtilization: { totalCredit: 0, usedCredit: 0, utilizationPercentage: 0, recommendation: "Unable to analyze" },
+                accounts: [],
+                fcraViolations: [],
+                recommendations: [],
+                legalCaseSummary: { totalViolationsFound: 0, highPriorityViolations: 0, estimatedCompensationPotential: "Unknown", attorneyReferralRecommended: false, nextSteps: "Please retry the analysis" }
+              };
             }
           }
 
