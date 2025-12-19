@@ -34,20 +34,20 @@ export default function Index() {
             </header>
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-24 px-6 min-h-[90vh] flex items-center overflow-hidden">
+            <section className="relative pt-32 pb-24 px-6 min-h-[90vh] flex items-center overflow-hidden isolate">
                 {/* Video Background */}
-                <div className="absolute inset-0 -z-10">
+                <div className="absolute inset-0 z-0">
                     <video
                         autoPlay
                         loop
                         muted
                         playsInline
-                        className="w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                     >
                         <source src="/videos/hero-background.mp4" type="video/mp4" />
                     </video>
                     {/* Dark overlay for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-[1]" />
                 </div>
 
                 <div className="max-w-7xl mx-auto text-center relative z-10">
