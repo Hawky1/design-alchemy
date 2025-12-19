@@ -1,10 +1,11 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, FileText, ArrowLeft, X, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AnalysisResults from '@/components/analysis-results';
 import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
+import carcLogo from '@/assets/carc-logo.webp';
 
 interface BureauFiles {
     experian: File | null;
@@ -181,20 +182,21 @@ export default function Analyze() {
                 <div className="ambient-orb ambient-orb-secondary absolute bottom-[10%] -right-[5%] w-[30%] h-[30%]" />
             </div>
 
-            <header className="fixed top-0 left-0 right-0 z-50 glass-panel-strong border-b border-border">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
+                <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img
-                            src="/carc-logo.webp"
+                            src={carcLogo}
                             alt="Consumer Advocate Resolution Center"
                             width={180}
                             height={60}
-                            className="h-12 w-auto"
+                            className="h-14 w-auto"
                         />
                     </Link>
-                    <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="font-medium">Back to Home</span>
+                    <Link to="/">
+                        <button className="px-4 py-1.5 text-sm rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 font-medium">
+                            Back to Home
+                        </button>
                     </Link>
                 </div>
             </header>
