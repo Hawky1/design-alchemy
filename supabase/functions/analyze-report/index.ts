@@ -322,7 +322,7 @@ Common FCRA violations to look for:
       async start(controller) {
         try {
           // Send initial progress
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 10, message: 'Uploading and processing PDF files...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 5, message: 'Uploading PDF files...' })}\n\n`));
 
           // Build the parts array: system prompt first, then PDF files with labels
           const parts = [
@@ -331,7 +331,21 @@ Common FCRA violations to look for:
             ...fileParts
           ];
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 30, message: 'Analyzing credit reports for FCRA violations...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 15, message: 'Processing PDF content...' })}\n\n`));
+          
+          // Small delay to ensure progress update is sent
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 25, message: 'Analyzing credit reports for FCRA violations...' })}\n\n`));
+          
+          // Start simulated progress updates during API call
+          let currentProgress = 25;
+          const progressInterval = setInterval(() => {
+            if (currentProgress < 55) {
+              currentProgress += 3;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: currentProgress, message: 'AI analyzing your credit reports...' })}\n\n`));
+            }
+          }, 2000);
 
           // Use Google Gemini API with multimodal PDF support
           const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
@@ -353,6 +367,9 @@ Common FCRA violations to look for:
               }
             }),
           });
+          
+          // Clear the progress interval
+          clearInterval(progressInterval);
 
           if (!response.ok) {
             const errorText = await response.text();
