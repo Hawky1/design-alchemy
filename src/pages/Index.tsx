@@ -44,7 +44,7 @@ export default function Index() {
                         playsInline
                         className="absolute inset-0 w-full h-full object-cover"
                     >
-                        <source src="https://storage.googleapis.com/msgsndr/FuOewPgnMEW1CaeIftBR/media/6944c7535b256b67cfc5cf3d.mp4" type="video/mp4" />
+                        <source src="https://storage.googleapis.com/msgsndr/FuOewPgnMEW1CaeIftBR/media/6944c9a85b256bbfd9c619bc.mp4" type="video/mp4" />
                     </video>
                     {/* Dark overlay for text readability */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-[1]" />
