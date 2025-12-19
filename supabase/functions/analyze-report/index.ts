@@ -106,9 +106,9 @@ Return a JSON object with EXACTLY this structure:
     {
       "accountName": "string (creditor name)",
       "accountNumber": "string (last 4 digits only, e.g., '****1234')",
-      "status": "string (Open/Closed/Derogatory/Collection/etc.)",
+      "status": "MUST be exactly ONE of these values ONLY: 'Open', 'Closed', 'Derogatory', 'Collection', 'Charge-Off', 'Paid', 'Current', 'Late'. Do NOT put descriptions or sentences here.",
       "balance": "string (reported balance or 'Not reported')",
-      "comments": "string (any issues or notes about this account)"
+      "comments": "string (put ALL descriptive details, payment status notes, charge-off info, past due amounts, and account history here - NOT in status)"
     }
   ],
   "fcraViolations": [
