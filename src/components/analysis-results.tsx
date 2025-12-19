@@ -239,7 +239,7 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                 <tbody className="divide-y divide-neutral-700">
                   {(results?.accountAnalysis ?? [])?.slice?.(0, 50)?.map?.((account, idx) => (
                     <tr key={idx} className="hover:bg-neutral-800/50">
-                      <td className="px-4 py-3 text-sm text-neutral-100">{account?.accountName ?? 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-100 font-medium">{account?.accountName ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-300 font-mono">{account?.accountNumber ?? 'N/A'}</td>
                       <td className="px-4 py-3 text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -255,8 +255,14 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-neutral-100">{account?.balance ?? 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-300 max-w-xs truncate" title={account?.comments ?? ''}>
-                        {account?.comments ?? '-'}
+                      <td className="px-4 py-3 text-sm max-w-md">
+                        {account?.comments ? (
+                          <div className="bg-amber-950/60 border-l-4 border-amber-500 px-4 py-3 rounded-r-lg">
+                            <p className="text-amber-100 leading-relaxed whitespace-pre-wrap">{account.comments}</p>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-500">-</span>
+                        )}
                       </td>
                     </tr>
                   ))}
