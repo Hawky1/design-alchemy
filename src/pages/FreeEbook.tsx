@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2, BookOpen, Scan, CreditCard } from 'lucide-react';
+import { ArrowRight, Loader2, BookOpen, Scan, CreditCard, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLead, parseUTMParams } from '@/lib/lead-context';
@@ -13,9 +13,25 @@ export default function FreeEbook() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ minutes: 14, seconds: 59 });
   const navigate = useNavigate();
   const { setLead, lead } = useLead();
   const { toast } = useToast();
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { minutes: prev.minutes - 1, seconds: 59 };
+        }
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // If already signed up, redirect to portal
   useEffect(() => {
@@ -117,7 +133,7 @@ export default function FreeEbook() {
         <source src="/videos/red5-background.mp4" type="video/mp4" />
       </video>
       {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-background/60 z-[1]" />
+      <div className="absolute inset-0 bg-background/40 z-[1]" />
       
       <main className="relative z-10 min-h-screen flex flex-col justify-center px-4 py-12">
         <div className="w-full max-w-5xl mx-auto animate-reveal">
@@ -159,6 +175,17 @@ export default function FreeEbook() {
             <div className="flex flex-col justify-center">
               {/* Compelling Signup Card */}
               <div className="bg-gradient-to-br from-destructive/90 to-primary/90 rounded-2xl p-8 space-y-6 border border-primary/50 shadow-2xl shadow-primary/30">
+                {/* Urgency Timer */}
+                <div className="bg-background/20 rounded-lg p-3 flex items-center justify-center gap-3">
+                  <Clock className="w-5 h-5 text-white animate-pulse" />
+                  <span className="text-white font-medium">Offer expires in:</span>
+                  <div className="flex gap-1 font-mono font-bold text-white text-xl">
+                    <span className="bg-background/30 px-2 py-1 rounded">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                    <span>:</span>
+                    <span className="bg-background/30 px-2 py-1 rounded">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                  </div>
+                </div>
+
                 <div className="text-center space-y-2">
                   <h2 className="text-2xl md:text-3xl font-bold text-white">
                     Claim Your FREE Guide
