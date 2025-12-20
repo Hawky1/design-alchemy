@@ -14,27 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      leads: {
+      analysis_results: {
         Row: {
           created_at: string
+          damages_potential: number | null
+          id: string
+          lead_id: string | null
+          results_json: Json
+          violations_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          damages_potential?: number | null
+          id?: string
+          lead_id?: string | null
+          results_json: Json
+          violations_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          damages_potential?: number | null
+          id?: string
+          lead_id?: string | null
+          results_json?: Json
+          violations_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          analysis_completed: boolean | null
+          call_booked: boolean | null
+          created_at: string
+          ebook_downloaded: boolean | null
           email: string
           id: string
           ip_address: string | null
           name: string
+          portal_accessed: boolean | null
+          reports_downloaded: boolean | null
+          source: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          violations_found: number | null
         }
         Insert: {
+          analysis_completed?: boolean | null
+          call_booked?: boolean | null
           created_at?: string
+          ebook_downloaded?: boolean | null
           email: string
           id?: string
           ip_address?: string | null
           name: string
+          portal_accessed?: boolean | null
+          reports_downloaded?: boolean | null
+          source?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          violations_found?: number | null
         }
         Update: {
+          analysis_completed?: boolean | null
+          call_booked?: boolean | null
           created_at?: string
+          ebook_downloaded?: boolean | null
           email?: string
           id?: string
           ip_address?: string | null
           name?: string
+          portal_accessed?: boolean | null
+          reports_downloaded?: boolean | null
+          source?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          violations_found?: number | null
         }
         Relationships: []
       }

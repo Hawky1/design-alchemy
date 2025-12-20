@@ -2,6 +2,9 @@
 
 import { ArrowLeft, AlertTriangle, CheckCircle, Shield, FileText, Scale, Gavel } from 'lucide-react';
 import { AnalysisResult } from '@/lib/analysis-schema';
+import { BookCallCTA } from '@/components/book-call-cta';
+import { useLead } from '@/lib/lead-context';
+import { useEffect } from 'react';
 
 interface AnalysisResultsProps {
   results: AnalysisResult;
@@ -9,6 +12,8 @@ interface AnalysisResultsProps {
 }
 
 export default function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
+  const { lead, updateLead } = useLead();
+
   const getSeverityColor = (severity: string) => {
     if (severity === 'High') return 'border-red-600 bg-red-50';
     if (severity === 'Medium') return 'border-yellow-500 bg-yellow-50';
@@ -36,6 +41,28 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
   const totalViolations = results?.legalSummary?.totalViolations ?? results?.fcraViolations?.length ?? 0;
   const highSeverityCount = results?.fcraViolations?.filter(v => v?.severity === 'High')?.length ?? 0;
   const mediumSeverityCount = results?.fcraViolations?.filter(v => v?.severity === 'Medium')?.length ?? 0;
+
+  // Calculate potential damages based on violations
+  const calculatePotentialDamages = () => {
+    const basePerViolation = 1000;
+    const highMultiplier = 3;
+    const mediumMultiplier = 2;
+    return (highSeverityCount * basePerViolation * highMultiplier) + 
+           (mediumSeverityCount * basePerViolation * mediumMultiplier) + 
+           ((totalViolations - highSeverityCount - mediumSeverityCount) * basePerViolation);
+  };
+
+  const potentialDamages = calculatePotentialDamages();
+
+  // Update lead context when analysis completes
+  useEffect(() => {
+    if (lead && totalViolations >= 0) {
+      updateLead({ 
+        analysisCompleted: true, 
+        violationsFound: totalViolations 
+      });
+    }
+  }, [totalViolations]);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 relative overflow-hidden">
@@ -269,6 +296,16 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Book a Call CTA - Show when violations found */}
+        {totalViolations > 0 && (
+          <div className="mb-8">
+            <BookCallCTA 
+              violationsCount={totalViolations} 
+              potentialDamages={potentialDamages}
+            />
           </div>
         )}
 
