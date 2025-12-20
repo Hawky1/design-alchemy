@@ -158,18 +158,6 @@ export default function FreeEbook() {
             
             {/* Left Column - Book Cover */}
             <div className="flex flex-col items-center justify-center gap-6">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-destructive to-primary rounded-xl blur-sm opacity-75 group-hover:opacity-100 transition-opacity animate-pulse" />
-                <img 
-                  src={ebookCover} 
-                  alt="How to Turn Credit Report Errors Into Compensation" 
-                  className="relative w-80 md:w-96 lg:w-[420px] rounded-lg border-2 border-primary shadow-2xl shadow-primary/50"
-                />
-                <div className="absolute -top-4 -right-4 bg-destructive text-destructive-foreground px-5 py-2 rounded-full text-sm font-bold uppercase tracking-wide shadow-lg">
-                  Free
-                </div>
-              </div>
-              
               {/* Urgency Timer */}
               <div className="w-full max-w-sm bg-gradient-to-r from-destructive/90 to-primary/90 rounded-xl p-4 border border-primary/50 shadow-xl shadow-primary/30">
                 <div className="flex items-center justify-center gap-3">
@@ -180,6 +168,18 @@ export default function FreeEbook() {
                     <span>:</span>
                     <span className="bg-background/30 px-2 py-1 rounded">{String(timeLeft.seconds).padStart(2, '0')}</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-destructive to-primary rounded-xl blur-sm opacity-75 group-hover:opacity-100 transition-opacity animate-pulse" />
+                <img 
+                  src={ebookCover} 
+                  alt="Free Credit Repair eBook" 
+                  className="relative w-80 md:w-96 lg:w-[420px] rounded-lg shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-300"
+                />
+                <div className="absolute -top-4 -right-4 bg-destructive text-destructive-foreground text-sm font-bold px-4 py-2 rounded-full shadow-lg animate-bounce">
+                  Free
                 </div>
               </div>
             </div>
