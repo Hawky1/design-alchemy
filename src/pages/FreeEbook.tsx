@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book, CheckCircle, Shield, TrendingUp, ArrowRight, Loader2 } from 'lucide-react';
+import { DollarSign, CheckCircle, Shield, Zap, ArrowRight, Loader2, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { useLead, parseUTMParams } from '@/lib/lead-context';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import carcLogo from '@/assets/carc-logo.webp';
+import ebookCover from '@/assets/ebook-cover.png';
 
 export default function FreeEbook() {
   const [name, setName] = useState('');
@@ -109,11 +110,11 @@ export default function FreeEbook() {
   };
 
   const benefits = [
-    "Understanding your credit report",
-    "How to spot errors and inaccuracies",
-    "Your rights under the FCRA",
-    "Steps to dispute incorrect information",
-    "How to build better credit"
+    "Why credit bureaus may owe YOU money",
+    "The FCRA laws that entitle you to compensation",
+    "How to identify violations on your report",
+    "Step-by-step process to claim what you're owed",
+    "Real examples of $1,000+ settlements"
   ];
 
   return (
@@ -131,24 +132,36 @@ export default function FreeEbook() {
             
             {/* Left Column - eBook Info */}
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20">
-                <Book className="w-4 h-4" />
-                <span className="text-sm font-medium">Free Resource</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                <DollarSign className="w-4 h-4" />
+                <span className="text-sm font-medium">Up to $1,000 Per Violation</span>
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-                Your Complete Guide to
-                <span className="gradient-text-primary block mt-2">Credit Repair</span>
+                How to Turn Credit Report Errors Into
+                <span className="text-destructive block mt-2">Cash Compensation</span>
               </h1>
 
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Learn how to read your credit report, identify errors, and understand your rights 
-                under the Fair Credit Reporting Act. Plus, discover how our free AI-powered 
-                scanner can help you find potential violations.
+                Discover how everyday Americans are using the <strong className="text-foreground">Fair Credit Reporting Act (FCRA)</strong> to 
+                claim <strong className="text-foreground">up to $1,000 for each violation</strong> on their credit reports. 
+                This free guide shows you exactly how.
               </p>
 
+              {/* Free Scan Callout */}
+              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 space-y-2">
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <Scan className="w-5 h-5" />
+                  <span>PLUS: Free AI-Powered Violation Scan</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  After downloading, you'll get access to our free scanner that analyzes your credit report 
+                  for potential FCRA violations. <strong className="text-foreground">See if you qualify for compensation in minutes.</strong>
+                </p>
+              </div>
+
               <div className="space-y-4">
-                <p className="font-semibold text-foreground">What you'll learn:</p>
+                <p className="font-semibold text-foreground">Inside this free guide:</p>
                 <ul className="space-y-3">
                   {benefits.map((benefit, index) => (
                     <li key={index} className="flex items-start gap-3">
@@ -163,22 +176,36 @@ export default function FreeEbook() {
               <div className="flex flex-wrap gap-6 pt-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Shield className="w-4 h-4 text-primary" />
-                  <span>100% Free</span>
+                  <span>100% Free Guide</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <span>5,000+ Downloads</span>
+                  <Zap className="w-4 h-4 text-primary" />
+                  <span>Instant Access</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column - Form */}
-            <div className="lg:pl-8">
+            {/* Right Column - Form + Book Cover */}
+            <div className="lg:pl-8 space-y-6">
+              {/* eBook Cover Image */}
+              <div className="flex justify-center">
+                <div className="relative">
+                  <img 
+                    src={ebookCover} 
+                    alt="How to Turn Credit Report Errors Into Compensation eBook" 
+                    className="w-64 md:w-72 rounded-lg shadow-2xl shadow-primary/20"
+                  />
+                  <div className="absolute -top-3 -right-3 bg-destructive text-destructive-foreground px-3 py-1 rounded-full text-sm font-bold">
+                    FREE
+                  </div>
+                </div>
+              </div>
+
               <div className="glass-panel-strong rounded-2xl p-8 space-y-6">
                 <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold">Get Your Free eBook</h2>
+                  <h2 className="text-2xl font-bold">Get Instant Access</h2>
                   <p className="text-muted-foreground">
-                    Enter your details below for instant access
+                    Download your free guide + unlock the violation scanner
                   </p>
                 </div>
 
@@ -221,7 +248,7 @@ export default function FreeEbook() {
                       </>
                     ) : (
                       <>
-                        Get Free Access
+                        Get My Free Guide
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </>
                     )}
@@ -233,6 +260,10 @@ export default function FreeEbook() {
                   We respect your privacy and will never share your information.
                 </p>
               </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Written by <strong className="text-foreground">Ken Lamothe</strong>, FCRA Expert
+              </p>
             </div>
           </div>
         </div>
