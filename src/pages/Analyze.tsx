@@ -33,33 +33,11 @@ export default function Analyze() {
         const video = videoRef.current;
         if (!video) return;
 
-        const videoSrc = 'https://customer-cbeadsgr09pnsezs.cloudflarestream.com/b17f76a1270818e8cdc55e8719b9ace8/manifest/video.m3u8';
-
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: false,
-            });
-            hls.loadSource(videoSrc);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(() => {
-                    // Autoplay failed, which is okay for background video
-                });
-            });
-
-            return () => {
-                hls.destroy();
-            };
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari)
-            video.src = videoSrc;
-            video.addEventListener('loadedmetadata', () => {
-                video.play().catch(() => {
-                    // Autoplay failed
-                });
-            });
-        }
+        video.src = 'https://files.revneo.com/red3.mp4';
+        video.load();
+        video.play().catch(() => {
+            // Autoplay failed, which is okay for background video
+        });
     }, []);
 
     const handleFileChange = (bureau: keyof BureauFiles) => (e: React.ChangeEvent<HTMLInputElement>) => {
