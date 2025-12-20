@@ -172,18 +172,13 @@ export default function Analyze() {
             {/* Video Background */}
             <video
                 ref={videoRef}
-                className="fixed inset-0 w-full h-full object-cover -z-20"
+                src="https://files.revneo.com/red3.mp4"
+                className="fixed inset-0 w-full h-full object-cover z-0"
                 autoPlay
                 muted
                 loop
                 playsInline
             />
-            
-            {/* Ambient Orbs */}
-            <div className="fixed inset-0 pointer-events-none -z-5">
-                <div className="ambient-orb ambient-orb-primary absolute -top-[10%] -left-[10%] w-[40%] h-[40%]" />
-                <div className="ambient-orb ambient-orb-secondary absolute bottom-[10%] -right-[5%] w-[30%] h-[30%]" />
-            </div>
 
             <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
