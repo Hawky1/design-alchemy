@@ -7,6 +7,7 @@ import { useLead, parseUTMParams } from '@/lib/lead-context';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ebookCover from '@/assets/ebook-cover.png';
+import breakingNewsBanner from '@/assets/breaking-news-banner.png';
 
 export default function FreeEbook() {
   const [name, setName] = useState('');
@@ -114,6 +115,11 @@ export default function FreeEbook() {
           
           {/* Full-width Header */}
           <div className="text-center mb-10">
+            <img 
+              src={breakingNewsBanner} 
+              alt="Consumer Alert Breaking News" 
+              className="mx-auto mb-6 max-w-md w-full"
+            />
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
               Get Paid Up to <span className="text-primary">$1,000</span> for Each Credit Report Error
             </h1>
