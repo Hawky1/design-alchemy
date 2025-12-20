@@ -106,9 +106,18 @@ export default function FreeEbook() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Ambient background effects */}
-      <div className="ambient-orb ambient-orb-primary w-[600px] h-[600px] -top-40 -left-40" />
-      <div className="ambient-orb ambient-orb-secondary w-[500px] h-[500px] -bottom-32 -right-32" />
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover z-0"
+      >
+        <source src="/videos/red5-background.mp4" type="video/mp4" />
+      </video>
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-background/80 z-[1]" />
       
       <main className="relative z-10 min-h-screen flex flex-col justify-center px-4 py-12">
         <div className="w-full max-w-5xl mx-auto animate-reveal">
