@@ -127,14 +127,34 @@ export default function FreeEbook() {
           </div>
 
           {/* Headline */}
-          <div className="text-center space-y-3">
+          <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-4xl font-bold leading-tight">
               Get Paid Up to <span className="text-primary">$1,000</span> for Each Credit Report Error
             </h1>
-            <p className="text-muted-foreground text-lg">
-              Free guide + AI-powered violation scan
+            <p className="text-muted-foreground text-lg max-w-sm mx-auto">
+              Discover how the Fair Credit Reporting Act entitles you to real compensation—and use our free AI scanner to find violations in minutes.
             </p>
           </div>
+
+          {/* Bullet Points */}
+          <ul className="space-y-3 text-left max-w-sm mx-auto">
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">✓</span>
+              <span className="text-muted-foreground">Learn which FCRA violations qualify for <span className="text-foreground font-medium">$1,000+</span> in statutory damages</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">✓</span>
+              <span className="text-muted-foreground">Understand why Equifax, TransUnion, and Experian make so many mistakes</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">✓</span>
+              <span className="text-muted-foreground">Follow a step-by-step process to dispute errors and file claims</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-primary mt-1">✓</span>
+              <span className="text-muted-foreground">Get instant results from our <span className="text-foreground font-medium">free AI-powered</span> credit report scanner</span>
+            </li>
+          </ul>
 
           {/* Form Card */}
           <div className="glass-panel-strong rounded-2xl p-6 space-y-5">
