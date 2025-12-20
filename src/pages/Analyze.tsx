@@ -179,7 +179,7 @@ export default function Analyze() {
                 playsInline
             />
             {/* Dark Overlay for Content Readability */}
-            <div className="fixed inset-0 -z-10 bg-background/70" />
+            <div className="fixed inset-0 -z-10 bg-background/40" />
             
             {/* Ambient Orbs */}
             <div className="fixed inset-0 pointer-events-none -z-5">
