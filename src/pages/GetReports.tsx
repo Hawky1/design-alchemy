@@ -72,7 +72,7 @@ export default function GetReports() {
       <SettlementsBanner />
       
       {/* Header */}
-      <header className="sticky top-0 z-40 py-4 px-6 border-b border-white/30 bg-white/80 backdrop-blur-xl shadow-lg">
+      <header className="sticky top-0 z-40 py-4 px-6 border-b border-neutral-200 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/">
             <img src={consumerLogo} alt="Consumer Advocate Resolution Center" className="h-14 w-auto" />

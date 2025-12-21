@@ -184,7 +184,7 @@ export default function Analyze() {
             {/* Settlements Banner */}
             <SettlementsBanner />
 
-            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-white/30 shadow-lg">
+            <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img
