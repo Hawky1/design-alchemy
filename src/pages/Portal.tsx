@@ -4,6 +4,7 @@ import { Book, FileText, ScanSearch, Phone, CheckCircle, Circle, ArrowRight, Dow
 import { Button } from '@/components/ui/button';
 import { useLead } from '@/lib/lead-context';
 import carcLogo from '@/assets/carc-logo.webp';
+import { SettlementsBanner } from '@/components/settlements-banner';
 
 interface Step {
   id: number;
@@ -103,8 +104,11 @@ export default function Portal() {
         loop
         playsInline
       />
+      {/* Settlements Banner */}
+      <SettlementsBanner />
+      
       {/* Header */}
-      <header className="py-4 px-6 border-b border-border bg-background shadow-sm">
+      <header className="sticky top-0 z-40 py-4 px-6 border-b border-border bg-background shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/">
             <img src={carcLogo} alt="CARC Logo" className="h-10 w-auto" />

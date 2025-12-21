@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, CheckCircle, FileText, Clock, Shie
 import { Button } from '@/components/ui/button';
 import { useLead } from '@/lib/lead-context';
 import carcLogo from '@/assets/carc-logo.webp';
+import { SettlementsBanner } from '@/components/settlements-banner';
 
 export default function GetReports() {
   const navigate = useNavigate();
@@ -67,8 +68,11 @@ export default function GetReports() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Settlements Banner */}
+      <SettlementsBanner />
+      
       {/* Header */}
-      <header className="py-4 px-6 border-b border-border">
+      <header className="sticky top-0 z-40 py-4 px-6 border-b border-border bg-background">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/">
             <img src={carcLogo} alt="CARC Logo" className="h-10 w-auto" />
