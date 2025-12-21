@@ -937,8 +937,8 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
         {results?.legalSummary && (
           <div className={`rounded-2xl shadow-lg p-6 mb-6 text-white border-2 ${
             totalIssueFlags > 0 
-              ? 'bg-gradient-to-r from-red-600 to-red-700 border-red-800' 
-              : 'bg-gradient-to-r from-green-600 to-green-700 border-green-800'
+              ? 'bg-red-600 border-red-800' 
+              : 'bg-green-600 border-green-800'
           }`}>
             <div className="flex items-center gap-3 mb-4">
               <Scale className="w-8 h-8" />
