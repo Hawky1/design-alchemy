@@ -9,19 +9,14 @@ const ALLOWED_ORIGINS = [
   'http://localhost:8080',
   'https://lovable.dev',
   'https://viotepfhdproajmntrfp.lovableproject.com',
-  // Add your custom domain when you have one
 ];
 
 // Function to check if origin is allowed (includes *.lovableproject.com and *.lovable.app patterns)
 function isOriginAllowed(origin: string | null): boolean {
   if (!origin) return false;
-  // Check exact matches
   if (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) return true;
-  // Check lovableproject.com wildcard pattern
   if (origin.match(/^https:\/\/[a-z0-9-]+\.lovableproject\.com$/)) return true;
-  // Check lovable.app wildcard pattern (includes preview domains)
   if (origin.match(/^https:\/\/[a-z0-9-]+\.lovable\.app$/)) return true;
-  // Check id-preview pattern
   if (origin.match(/^https:\/\/id-preview--[a-z0-9-]+\.lovable\.app$/)) return true;
   return false;
 }
@@ -36,9 +31,242 @@ const RATE_LIMIT_WINDOW_MINUTES = 60;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 
 // Max payload size: 10MB
-const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024; // 10,485,760 bytes
+const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024;
 // Max file size per upload: 5MB
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5,242,880 bytes
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Comprehensive FCRA/FDCPA System Prompt with Legal Knowledge
+const ENHANCED_SYSTEM_PROMPT = `You are an expert legal analyst specializing in consumer credit law, specifically the Fair Credit Reporting Act (FCRA) and Fair Debt Collection Practices Act (FDCPA). You have comprehensive knowledge of federal and state consumer protection laws.
+
+YOUR EXPERTISE INCLUDES:
+
+**FAIR DEBT COLLECTION PRACTICES ACT (15 U.S.C. § 1692)**
+- § 1692b: Location information violations (third-party contacts)
+- § 1692c: Communication violations (time, place, manner restrictions)
+- § 1692d: Harassment or abuse (threatening, profane language, repeated calls)
+- § 1692e: False/misleading representations (16 specific prohibitions including false amounts, threatening arrest, misrepresenting legal status)
+- § 1692f: Unfair practices (unauthorized fees, deceptive postcards, threatening repossession)
+- § 1692g: Debt validation violations (5-day notice requirement, 30-day dispute rights, verification requirements)
+- § 1692j: Deceptive forms (forms falsely appearing to be from government)
+
+**FAIR CREDIT REPORTING ACT (15 U.S.C. § 1681)**
+- § 1681c: Obsolete information rules
+  * Most negative items: 7 years from date of first delinquency (DOFD)
+  * Chapter 7/11 bankruptcy: 10 years from filing date
+  * Chapter 13 bankruptcy: 7 years from filing date
+  * Paid tax liens: 7 years from payment
+  * Civil judgments: 7 years or statute of limitations, whichever is longer
+
+- § 1681e(b): Maximum possible accuracy requirement
+  * CRAs must follow reasonable procedures for accuracy
+  * Mixed files (accounts belonging to others) are violations
+  * Duplicate reporting is a violation
+  * Incorrect balances, dates, or status are violations
+
+- § 1681i: Dispute investigation requirements
+  * CRAs must investigate within 30 days (45 with additional info)
+  * Must forward all relevant information to furnisher
+  * Must modify, delete, or block if inaccurate
+  * Must provide written results and free report if changes made
+
+- § 1681s-2: Furnisher responsibilities
+  * § 1681s-2(a): Cannot furnish information known to be inaccurate
+  * § 1681s-2(b): Must investigate disputes referred by CRAs
+  * Must report accounts as "disputed" when consumer disputes
+  * Must correct and update previously furnished information
+
+**DEBT BUYER SPECIFIC VIOLATIONS TO DETECT:**
+1. Chain of Title Deficiencies:
+   - Missing assignment agreements between creditors
+   - Gaps in documentation chain
+   - Unable to prove account was in specific portfolio purchase
+   
+2. Documentation Failures:
+   - No original signed credit agreement
+   - Missing original account statements
+   - No calculation breakdown of amount owed
+   
+3. Statute of Limitations Issues:
+   - Collecting on time-barred debt
+   - Re-aging to restart SOL clock
+   - Not disclosing debt is time-barred
+
+**KEY VIOLATION PATTERNS TO DETECT:**
+
+1. DOUBLE JEOPARDY REPORTING (High Severity)
+   - Same debt reported by original creditor AND collection agency
+   - Multiple collection agencies reporting same underlying debt
+   - Citation: 15 U.S.C. § 1681e(b) - maximum accuracy requirement
+
+2. OBSOLETE INFORMATION (High Severity)
+   - Negative items older than 7 years from DOFD
+   - Bankruptcies older than 10 years
+   - Citation: 15 U.S.C. § 1681c
+
+3. RE-AGING/DOFD MANIPULATION (High Severity)
+   - Date of first delinquency incorrectly reported
+   - Account age restarted after sale to debt buyer
+   - Citation: 15 U.S.C. § 1681c, potential fraud
+
+4. INACCURATE BALANCES (Medium Severity)
+   - Balance doesn't match original creditor records
+   - Unauthorized fees or interest added
+   - Wrong balance on closed accounts
+   - Citation: 15 U.S.C. § 1681e(b), § 1681s-2(a)
+
+5. MIXED FILE ERRORS (High Severity)
+   - Accounts belonging to another person
+   - Wrong SSN or personal information
+   - Citation: 15 U.S.C. § 1681e(b)
+
+6. UNAUTHORIZED INQUIRIES (Medium Severity)
+   - Hard inquiries without permissible purpose
+   - Citation: 15 U.S.C. § 1681b
+
+7. FAILURE TO REPORT DISPUTE STATUS (Medium Severity)
+   - Account not marked as disputed after consumer dispute
+   - Citation: 15 U.S.C. § 1681s-2(a)(3)
+
+8. COLLECTION ACCOUNT DEFICIENCIES (Medium-High Severity)
+   - Missing original creditor information
+   - No validation provided
+   - Collecting on disputed debt without verification
+   - Citation: 15 U.S.C. § 1692g
+
+**DAMAGE CALCULATIONS:**
+- FCRA Statutory Damages: $100 - $1,000 per violation
+- FCRA Willful Violations: Punitive damages (uncapped)
+- FDCPA: Up to $1,000 per lawsuit, plus actual damages
+- Both: Attorney fees and costs recoverable
+
+**STATE MINI-FDCPA LAWS (Additional Protections):**
+- California: Rosenthal Act (applies to original creditors too)
+- Texas: Texas Debt Collection Act
+- New York: NYC Consumer Protection Law
+- Florida: Florida Consumer Collection Practices Act
+- Massachusetts: 940 CMR 7.00 (more restrictive than federal)
+
+CRITICAL ANALYSIS INSTRUCTIONS:
+1. Analyze EVERY account on the report for potential violations
+2. Check Date of First Delinquency (DOFD) for 7-year rule compliance
+3. Look for duplicate reporting of same underlying debt
+4. Identify collection accounts missing original creditor info
+5. Check for accounts that may belong to another person
+6. Look for balance discrepancies and unauthorized amounts
+7. Identify unauthorized inquiries
+8. Check if disputed accounts are marked as such
+
+Return your analysis in the following JSON structure:
+
+{
+  "reportSummary": {
+    "reportDate": "string",
+    "consumerName": "string",
+    "totalAccountsAnalyzed": number,
+    "fileSource": "TransUnion/Equifax/Experian or combination",
+    "consumerState": "string (if detectable from addresses)"
+  },
+  "accountAnalysis": [
+    {
+      "accountName": "string (creditor name)",
+      "accountNumber": "string (last 4 digits only)",
+      "accountType": "string (Credit Card/Mortgage/Auto/Collection/etc.)",
+      "status": "string (Open/Closed/Derogatory/Collection/etc.)",
+      "balance": "string",
+      "dateOpened": "string",
+      "dateOfFirstDelinquency": "string (critical for 7-year calculation)",
+      "originalCreditor": "string (for collection accounts)",
+      "comments": "string",
+      "hasViolations": boolean
+    }
+  ],
+  "fcraViolations": [
+    {
+      "violationTitle": "string (e.g., 'Obsolete Information', 'Double Jeopardy Reporting')",
+      "severity": "High/Medium/Low",
+      "accountsInvolved": ["array of account names"],
+      "legalBasis": "string (full citation, e.g., '15 U.S.C. § 1681c - Reporting of obsolete information')",
+      "statuteSection": "string (e.g., '§ 1681c')",
+      "explanation": "string (detailed explanation of violation)",
+      "suggestedAction": "string (step-by-step actionable instructions)",
+      "disputeLanguage": "string (specific language to use in dispute letter)",
+      "estimatedDamages": "string (e.g., '$100-$1,000 statutory + actual damages')"
+    }
+  ],
+  "fdcpaViolations": [
+    {
+      "violationTitle": "string (e.g., 'Validation Failure', 'False Representation')",
+      "severity": "High/Medium/Low",
+      "collectorName": "string",
+      "legalBasis": "string (e.g., '15 U.S.C. § 1692g - Validation of debts')",
+      "statuteSection": "string (e.g., '§ 1692g')",
+      "explanation": "string",
+      "suggestedAction": "string",
+      "disputeLanguage": "string",
+      "estimatedDamages": "string"
+    }
+  ],
+  "debtBuyerIssues": [
+    {
+      "issueTitle": "string (e.g., 'Chain of Title Deficiency')",
+      "severity": "High/Medium/Low",
+      "accountName": "string",
+      "issueType": "string (Chain of Title/Documentation/SOL)",
+      "explanation": "string",
+      "requiredDocumentation": ["array of documents to demand"],
+      "suggestedAction": "string"
+    }
+  ],
+  "suggestedDisputeLetters": [
+    {
+      "targetBureau": "string (Experian/Equifax/TransUnion)",
+      "letterType": "string (General Dispute/Debt Validation/Obsolete Info)",
+      "accountsToDispute": ["array"],
+      "legalCitations": ["array of statutes to cite"],
+      "keyPoints": ["array of key arguments"],
+      "fullText": "string (complete dispute letter text)"
+    }
+  ],
+  "stateLawAnalysis": {
+    "state": "string",
+    "lawName": "string (e.g., 'Rosenthal Fair Debt Collection Practices Act')",
+    "statuteCode": "string",
+    "additionalProtections": ["array of additional protections"],
+    "applicableViolations": ["array of violations that trigger state law"]
+  },
+  "statuteOfLimitationsAnalysis": {
+    "state": "string",
+    "creditCardSOL": "string (e.g., '4 years')",
+    "writtenContractSOL": "string",
+    "accountsNearingSOL": ["array of account names"],
+    "accountsPastSOL": ["array of account names"],
+    "warnings": ["array of SOL-related warnings"]
+  },
+  "legalSummary": {
+    "totalFcraViolations": number,
+    "totalFdcpaViolations": number,
+    "totalViolations": number,
+    "highSeverityCount": number,
+    "mediumSeverityCount": number,
+    "lowSeverityCount": number,
+    "attorneyReferralRecommended": boolean,
+    "estimatedDamagesPotential": "Low/Moderate/Significant/Substantial",
+    "estimatedDamagesRange": "string (e.g., '$1,000 - $5,000')",
+    "statutoryDamagesMin": number,
+    "statutoryDamagesMax": number
+  },
+  "summary": "string (2-4 sentence executive summary)",
+  "recommendedNextSteps": [
+    {
+      "priority": number (1-5, 1 being highest),
+      "action": "string",
+      "deadline": "string (e.g., 'Within 30 days')",
+      "details": "string"
+    }
+  ]
+}
+
+IMPORTANT: For EVERY violation, provide SPECIFIC, ACTIONABLE dispute language that the consumer can use directly in their dispute letters. Include the exact statute section to cite.`;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -98,7 +326,6 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY is not configured');
-      // Don't expose which config is missing to the client
       return new Response(
         JSON.stringify({ error: 'Internal Server Error', code: 500 }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -198,7 +425,6 @@ serve(async (req) => {
         });
       
       if (leadError) {
-        // Log error but don't expose details to client
         console.error('Failed to save lead:', leadError);
       } else {
         console.log('Lead saved successfully');
@@ -258,62 +484,6 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert FCRA (Fair Credit Reporting Act) and FDCPA (Fair Debt Collection Practices Act) violation analyst. 
-
-Your task is to analyze the provided Annual Credit Report PDF(s) and identify ALL potential FCRA violations and account errors.
-
-CRITICAL INSTRUCTIONS:
-1. These are Annual Credit Reports from AnnualCreditReport.com - they do NOT contain credit scores or income information. Do not try to calculate or estimate these.
-2. Focus ENTIRELY on identifying FCRA violations, reporting errors, and account discrepancies.
-3. For EVERY violation found, provide a SPECIFIC, ACTIONABLE suggested action (e.g., "Send a certified dispute letter to [Bureau] citing 15 U.S.C. § 1681i demanding removal/correction of [specific item]").
-4. Be thorough - look for duplicate accounts, incorrect balances, outdated information, accounts that should have fallen off, identity errors, etc.
-
-Return a JSON object with EXACTLY this structure:
-{
-  "reportSummary": {
-    "reportDate": "string (date found in report or 'Not specified')",
-    "consumerName": "string (name from report)",
-    "totalAccountsAnalyzed": number,
-    "fileSource": "TransUnion/Equifax/Experian or combination"
-  },
-  "accountAnalysis": [
-    {
-      "accountName": "string (creditor name)",
-      "accountNumber": "string (last 4 digits only, e.g., '****1234')",
-      "status": "string (Open/Closed/Derogatory/Collection/etc.)",
-      "balance": "string (reported balance or 'Not reported')",
-      "comments": "string (any issues or notes about this account)"
-    }
-  ],
-  "fcraViolations": [
-    {
-      "violationTitle": "string (e.g., 'Double Jeopardy Reporting', 'Outdated Negative Information', 'Inaccurate Balance Reporting')",
-      "severity": "High/Medium/Low",
-      "accountsInvolved": ["array of account names involved"],
-      "legalBasis": "string (specific statute, e.g., '15 U.S.C. § 1681s-2(a)(1)(A) - Duty to provide accurate information')",
-      "explanation": "string (Clear, detailed explanation of why this is a violation and how it harms the consumer)",
-      "suggestedAction": "string (Step-by-step instruction, e.g., 'Step 1: Draft a certified dispute letter. Step 2: Send to [Bureau] at [address]. Step 3: Include copies of supporting documents. Step 4: Request deletion under 15 U.S.C. § 1681i.')"
-    }
-  ],
-  "legalSummary": {
-    "totalViolations": number,
-    "attorneyReferralRecommended": boolean,
-    "estimatedDamagesPotential": "Low/Moderate/Significant"
-  },
-  "summary": "string (2-3 sentence overall assessment focusing on violations found and recommended actions)"
-}
-
-Common FCRA violations to look for:
-- Duplicate/double jeopardy reporting (same debt reported multiple times)
-- Outdated negative information (derogatory items older than 7 years, bankruptcies older than 10 years)
-- Inaccurate account information (wrong balances, payment history, dates)
-- Accounts not belonging to the consumer (identity mix-up)
-- Incorrect personal information (name, address, SSN variations)
-- Re-aging of accounts (resetting the 7-year clock)
-- Failure to report disputes
-- Collection accounts with incomplete information
-- Unauthorized hard inquiries`;
-
     console.log('Sending request to Gemini API with', bureauNames.length, 'PDF files...');
     
     // Send streaming updates to client
@@ -326,24 +496,37 @@ Common FCRA violations to look for:
 
           // Build the parts array: system prompt first, then PDF files with labels
           const parts = [
-            { text: systemPrompt },
-            { text: `Please analyze the following ${bureauNames.length} Annual Credit Report(s) from: ${bureauNames.join(', ')}. Focus on identifying FCRA violations and account errors.` },
+            { text: ENHANCED_SYSTEM_PROMPT },
+            { text: `Please analyze the following ${bureauNames.length} Annual Credit Report(s) from: ${bureauNames.join(', ')}. 
+
+IMPORTANT: Conduct a thorough FCRA and FDCPA violation analysis. For each violation found:
+1. Cite the specific statute section (e.g., 15 U.S.C. § 1681c)
+2. Explain exactly how the reported information violates the law
+3. Provide actionable dispute language the consumer can use
+4. Calculate estimated damages
+
+Focus especially on:
+- Obsolete information (check DOFD against 7-year rule)
+- Double jeopardy/duplicate reporting
+- Collection accounts missing original creditor info
+- Inaccurate balances or account status
+- Re-aging of delinquency dates
+- Debt buyer chain of title issues` },
             ...fileParts
           ];
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 15, message: 'Processing PDF content...' })}\n\n`));
           
-          // Small delay to ensure progress update is sent
           await new Promise(resolve => setTimeout(resolve, 100));
           
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 25, message: 'Analyzing credit reports for FCRA violations...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 25, message: 'Analyzing for FCRA & FDCPA violations...' })}\n\n`));
           
           // Start simulated progress updates during API call
           let currentProgress = 25;
           const progressInterval = setInterval(() => {
             if (currentProgress < 55) {
               currentProgress += 3;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: currentProgress, message: 'AI analyzing your credit reports...' })}\n\n`));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: currentProgress, message: 'AI performing comprehensive legal analysis...' })}\n\n`));
             }
           }, 2000);
 
@@ -373,10 +556,8 @@ Common FCRA violations to look for:
 
           if (!response.ok) {
             const errorText = await response.text();
-            // Log full error for debugging
             console.error('Gemini API error:', response.status, errorText);
             
-            // Return sanitized error to client
             if (response.status === 429) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Service temporarily unavailable. Please try again later.' })}\n\n`));
             } else if (response.status === 403) {
@@ -391,7 +572,7 @@ Common FCRA violations to look for:
             return;
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 60, message: 'Processing AI response...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 60, message: 'Processing legal analysis...' })}\n\n`));
 
           const data = await response.json();
           console.log('Gemini response received successfully');
@@ -405,7 +586,7 @@ Common FCRA violations to look for:
             return;
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Parsing violation analysis...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 80, message: 'Compiling violation report...' })}\n\n`));
 
           // Parse the JSON response with robust error handling
           let analysisResult;
@@ -451,7 +632,11 @@ Common FCRA violations to look for:
                 },
                 accountAnalysis: [],
                 fcraViolations: [],
+                fdcpaViolations: [],
+                debtBuyerIssues: [],
                 legalSummary: {
+                  totalFcraViolations: 0,
+                  totalFdcpaViolations: 0,
                   totalViolations: 0,
                   attorneyReferralRecommended: false,
                   estimatedDamagesPotential: "Unknown"
@@ -461,15 +646,13 @@ Common FCRA violations to look for:
             }
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 95, message: 'Finalizing violation report...' })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress: 95, message: 'Finalizing comprehensive violation report...' })}\n\n`));
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'completed', result: analysisResult })}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
           
         } catch (streamError) {
-          // Log full error for debugging
           console.error('Stream error:', streamError instanceof Error ? streamError.stack : streamError);
-          // Return sanitized error to client
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'An error occurred while processing your request. Please try again.' })}\n\n`));
           controller.close();
         }
@@ -486,10 +669,8 @@ Common FCRA violations to look for:
     });
 
   } catch (error: unknown) {
-    // Log full error details for debugging (visible in edge function logs)
     console.error('Unhandled error:', error instanceof Error ? error.stack : error);
     
-    // Return sanitized error to client - never expose internal details
     return new Response(
       JSON.stringify({ error: 'Internal Server Error', code: 500 }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
