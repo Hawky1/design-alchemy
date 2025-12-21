@@ -275,38 +275,6 @@ export default function FreeEbook() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-            <div className="flex items-center gap-4">
-              <img
-                src={consumerLogo}
-                alt="Consumer Advocate Resolution Center"
-                className="h-12 w-auto brightness-0 invert"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <a href="tel:1-888-817-2272" className="text-sm font-semibold hover:text-primary transition-colors">
-                1-888-817-CARC (2272)
-              </a>
-              <a href="mailto:Consumeradvocatecenter@gmail.com" className="text-sm hover:text-primary transition-colors">
-                Consumeradvocatecenter@gmail.com
-              </a>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 pt-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-gray-400 text-sm">
-              <p>© 2026 Consumer Advocate Resolution Center. All Rights Reserved.</p>
-              <div className="flex items-center gap-4">
-                <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
-                <Link to="/disclaimer" className="hover:text-white transition-colors">Disclaimer</Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
