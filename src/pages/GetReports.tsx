@@ -118,15 +118,22 @@ export default function GetReports() {
 
           {/* Important Notice */}
           <div className="bg-amber-50 rounded-2xl p-8 border border-amber-200 shadow-sm">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-shrink-0 flex items-center justify-center">
-                <img 
-                  src={annualCreditReportLogo} 
-                  alt="Annual Credit Report - Authorized by Federal Law" 
-                  className="h-20 w-auto"
-                />
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="flex-shrink-0 flex items-center justify-center w-full md:w-auto">
+                <a 
+                  href="https://www.annualcreditreport.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img 
+                    src={annualCreditReportLogo} 
+                    alt="Annual Credit Report - Authorized by Federal Law" 
+                    className="h-16 w-auto max-w-[200px] object-contain"
+                  />
+                </a>
               </div>
-              <div className="space-y-3">
+              <div className="flex-1 space-y-3">
                 <h3 className="text-xl font-bold text-gray-900">Important: Use AnnualCreditReport.com</h3>
                 <p className="text-gray-600 text-lg leading-relaxed">
                   This is the only official website authorized by federal law to provide free credit reports 
