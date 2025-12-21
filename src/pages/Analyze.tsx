@@ -6,6 +6,9 @@ import LeadCaptureDialog, { LeadData } from '@/components/lead-capture-dialog';
 import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import consumerLogo from '@/assets/consumer-logo.png';
+import experianLogo from '@/assets/experian-logo.png';
+import equifaxLogo from '@/assets/equifax-logo.png';
+import transunionLogo from '@/assets/transunion-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { SettlementsBanner } from '@/components/settlements-banner';
 
@@ -220,7 +223,9 @@ export default function Analyze() {
                         <div className="grid md:grid-cols-3 gap-6">
                             {/* Experian */}
                             <div className="space-y-3">
-                                <h3 className="text-lg font-semibold text-center">Experian</h3>
+                                <div className="flex justify-center h-10">
+                                    <img src={experianLogo} alt="Experian" className="h-full w-auto object-contain" />
+                                </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${files.experian
                                             ? 'border-primary bg-primary/10'
@@ -265,7 +270,9 @@ export default function Analyze() {
 
                             {/* Equifax */}
                             <div className="space-y-3">
-                                <h3 className="text-lg font-semibold text-center">Equifax</h3>
+                                <div className="flex justify-center h-10">
+                                    <img src={equifaxLogo} alt="Equifax" className="h-full w-auto object-contain" />
+                                </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${files.equifax
                                             ? 'border-info bg-info/10'
@@ -310,7 +317,9 @@ export default function Analyze() {
 
                             {/* TransUnion */}
                             <div className="space-y-3">
-                                <h3 className="text-lg font-semibold text-center">TransUnion</h3>
+                                <div className="flex justify-center h-10">
+                                    <img src={transunionLogo} alt="TransUnion" className="h-full w-auto object-contain" />
+                                </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${files.transunion
                                             ? 'border-success bg-success/10'
