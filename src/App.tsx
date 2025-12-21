@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LeadProvider } from "@/lib/lead-context";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import Index from "./pages/Index";
 import Analyze from "./pages/Analyze";
 import ApiTest from "./pages/ApiTest";
@@ -23,6 +24,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                    <ScrollToTop />
                     <Routes>
                         <Route path="/" element={<FreeEbook />} />
                         <Route path="/home" element={<Index />} />
