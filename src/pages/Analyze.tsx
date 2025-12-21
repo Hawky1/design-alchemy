@@ -248,7 +248,7 @@ export default function Analyze() {
                         <div className="grid md:grid-cols-3 gap-6">
                             {/* Experian */}
                             <div className="space-y-4 group">
-                                <div className="flex justify-center h-12 p-2 bg-white/90 rounded-xl mx-4">
+                                <div className="flex justify-center h-12">
                                     <img src={experianLogo} alt="Experian" className="h-full w-auto object-contain" />
                                 </div>
                                 <div
@@ -299,7 +299,7 @@ export default function Analyze() {
 
                             {/* Equifax */}
                             <div className="space-y-4 group">
-                                <div className="flex justify-center h-12 p-2 bg-white/90 rounded-xl mx-4">
+                                <div className="flex justify-center h-12">
                                     <img src={equifaxLogo} alt="Equifax" className="h-full w-auto object-contain" />
                                 </div>
                                 <div
@@ -350,7 +350,7 @@ export default function Analyze() {
 
                             {/* TransUnion */}
                             <div className="space-y-4 group">
-                                <div className="flex justify-center h-12 p-2 bg-white/90 rounded-xl mx-4">
+                                <div className="flex justify-center h-12">
                                     <img src={transunionLogo} alt="TransUnion" className="h-full w-auto object-contain" />
                                 </div>
                                 <div
