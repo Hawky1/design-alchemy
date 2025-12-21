@@ -4,12 +4,15 @@ import {
   ArrowLeft, AlertTriangle, CheckCircle, Shield, FileText, Scale, Gavel, 
   BookOpen, FileWarning, Clock, Copy, UserX, DollarSign, Building, Phone, 
   AlertOctagon, TrendingUp, Calendar, PieChart, Target, ClipboardList,
-  HelpCircle, AlertCircle, Ban, ChevronDown, ChevronUp
+  HelpCircle, AlertCircle, Ban, ChevronDown, ChevronUp, Printer, Download
 } from 'lucide-react';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import { BookCallCTA } from '@/components/book-call-cta';
 import { useLead } from '@/lib/lead-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import carcLogo from '@/assets/carc-header-logo.png';
 
 interface AnalysisResultsProps {
   results: AnalysisResult;
@@ -18,6 +21,8 @@ interface AnalysisResultsProps {
 
 export default function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
   const { lead, updateLead } = useLead();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     executive: true,
     utilization: true,
@@ -30,6 +35,76 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!contentRef.current || isGeneratingPdf) return;
+    
+    setIsGeneratingPdf(true);
+    
+    try {
+      // Expand all sections for PDF
+      const allExpanded: Record<string, boolean> = {};
+      Object.keys(expandedSections).forEach(key => {
+        allExpanded[key] = true;
+      });
+      setExpandedSections(allExpanded);
+      
+      // Wait for re-render
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const element = contentRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      
+      // Calculate pages needed
+      const scaledHeight = imgHeight * ratio;
+      const pageHeight = pdfHeight;
+      let heightLeft = scaledHeight;
+      let position = 0;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, scaledHeight);
+      heightLeft -= pageHeight;
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - scaledHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, scaledHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      const date = new Date().toISOString().split('T')[0];
+      pdf.save(`Credit-Report-Analysis-${date}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }, [expandedSections, isGeneratingPdf]);
 
   const getPriorityColor = (priority: string | undefined) => {
     if (priority === 'High') return 'bg-red-100 text-red-800 border-red-300';
@@ -107,22 +182,67 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
   );
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 relative overflow-hidden">
-      <div className="fixed inset-0 -z-10 opacity-30">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 relative overflow-hidden print-container" ref={contentRef}>
+      <div className="fixed inset-0 -z-10 opacity-30 no-print">
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 20% 50%, rgba(244, 63, 94, 0.15) 0%, transparent 50%),
                            radial-gradient(circle at 80% 80%, rgba(251, 113, 133, 0.15) 0%, transparent 50%)`
         }}></div>
       </div>
 
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-neutral-950/80 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <button onClick={onReset} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Analyze New Report</span>
-          </button>
+      {/* Branded Header with Print/Download */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-neutral-950/80 border-b border-white/10 print-header no-print">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Logo and Branding */}
+            <div className="flex items-center gap-4">
+              <img 
+                src={carcLogo} 
+                alt="Consumer Advocate Resolution Center" 
+                className="h-12 w-auto"
+              />
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onReset} 
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors text-sm font-medium"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Analyze New Report</span>
+              </button>
+              <button 
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors text-sm font-medium"
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Print</span>
+              </button>
+              <button 
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 transition-colors text-sm font-medium text-white disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating...' : 'Download PDF'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
+
+      {/* Print-only Header (shows when printing) */}
+      <div className="hidden print:block p-6 border-b-2 border-gray-300 mb-4">
+        <div className="flex items-center gap-4">
+          <img 
+            src={carcLogo} 
+            alt="Consumer Advocate Resolution Center" 
+            className="h-16 w-auto"
+          />
+        </div>
+        <p className="text-sm text-gray-500 mt-2">Credit Report Analysis • Generated on {new Date().toLocaleDateString()}</p>
+      </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6">
