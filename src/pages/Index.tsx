@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FileText, Shield, TrendingUp, AlertCircle, BarChart3, CheckCircle } from 'lucide-react';
-import carcLogo from '@/assets/carc-logo.webp';
+import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
 
 export default function Index() {
@@ -18,14 +18,12 @@ export default function Index() {
 
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <img
-                            src={carcLogo}
+                            src={consumerLogo}
                             alt="Consumer Advocate Resolution Center"
-                            width={180}
-                            height={60}
-                            className="h-14 w-auto"
+                            className="h-16 w-auto"
                         />
                     </div>
                     <Link to="/analyze">
