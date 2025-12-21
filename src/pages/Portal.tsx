@@ -291,7 +291,7 @@ export default function Portal() {
               If you have any questions, don't hesitate to reach out.
             </p>
             <Button variant="outline" size="lg" asChild className="shadow-sm hover:shadow-md transition-shadow">
-              <a href="mailto:support@consumeradvocatecenter.com">
+              <a href="mailto:Consumeradvocatecenter@gmail.com">
                 Contact Support
               </a>
             </Button>
