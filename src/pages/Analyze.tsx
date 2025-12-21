@@ -172,22 +172,23 @@ export default function Analyze() {
     const hasAnyFile = files.experian || files.equifax || files.transunion;
 
     return (
-        <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
-            {/* Video Background */}
+        <div className="min-h-screen bg-gray-50 text-gray-900 relative overflow-hidden">
+            {/* Video Background with Light Overlay */}
             <video
                 ref={videoRef}
                 src="https://files.revneo.com/red3.mp4"
-                className="fixed inset-0 w-full h-full object-cover z-0"
+                className="fixed inset-0 w-full h-full object-cover z-0 opacity-10"
                 autoPlay
                 muted
                 loop
                 playsInline
             />
+            <div className="fixed inset-0 bg-gray-50/90 z-0" />
 
             {/* Settlements Banner */}
             <SettlementsBanner />
 
-            <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 shadow-sm">
+            <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img
@@ -204,45 +205,45 @@ export default function Analyze() {
                 </div>
             </header>
 
-            <div className="max-w-5xl mx-auto px-6 pt-16 pb-16">
+            <div className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-16">
                 {/* Step Indicator */}
                 <div className="flex items-center justify-center gap-2 mb-8 animate-reveal">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30">
-                        <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center">1</span>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 shadow-sm">
+                        <span className="w-6 h-6 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center">1</span>
                         <span className="text-sm font-medium text-primary">Upload</span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border">
-                        <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-sm font-bold flex items-center justify-center">2</span>
-                        <span className="text-sm font-medium text-muted-foreground">Analyze</span>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-gray-100">
+                        <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-500 text-sm font-bold flex items-center justify-center">2</span>
+                        <span className="text-sm font-medium text-gray-500">Analyze</span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border">
-                        <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-sm font-bold flex items-center justify-center">3</span>
-                        <span className="text-sm font-medium text-muted-foreground">Results</span>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-gray-100">
+                        <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-500 text-sm font-bold flex items-center justify-center">3</span>
+                        <span className="text-sm font-medium text-gray-500">Results</span>
                     </div>
                 </div>
 
                 <div className="text-center mb-10 animate-reveal">
-                    <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight gradient-text">
+                    <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight text-gray-900">
                         Analyze Your Credit Reports
                     </h1>
-                    <p className="text-lg text-muted-foreground mb-3 font-light">
+                    <p className="text-lg text-gray-600 mb-3 font-light">
                         Upload reports from all three bureaus for comprehensive cross-bureau analysis
                     </p>
                     <div className="flex items-center justify-center gap-6 text-sm">
-                        <span className="flex items-center gap-2 text-muted-foreground">
+                        <span className="flex items-center gap-2 text-gray-500">
                             <Clock className="w-4 h-4 text-primary" />
                             ~2 min analysis
                         </span>
-                        <span className="flex items-center gap-2 text-muted-foreground">
-                            <Shield className="w-4 h-4 text-success" />
+                        <span className="flex items-center gap-2 text-gray-500">
+                            <Shield className="w-4 h-4 text-green-600" />
                             256-bit encrypted
                         </span>
                     </div>
                 </div>
 
-                <div className="glass-panel-strong rounded-3xl p-8 md:p-12 animate-reveal-delay-1 shadow-2xl border-gradient">
+                <div className="bg-white rounded-3xl p-8 md:p-12 animate-reveal-delay-1 shadow-xl border border-gray-100">
                     <div className="space-y-8">
                         {/* Upload Areas for Each Bureau */}
                         <div className="grid md:grid-cols-3 gap-6">
@@ -253,8 +254,8 @@ export default function Analyze() {
                                 </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${files.experian
-                                            ? 'border-primary bg-primary/15 shadow-lg shadow-primary/20'
-                                            : 'border-border bg-card/50 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10 group-hover:scale-[1.02]'
+                                            ? 'border-primary bg-primary/5 shadow-lg'
+                                            : 'border-gray-200 bg-gray-50 hover:border-primary/50 hover:bg-primary/5 hover:shadow-lg group-hover:scale-[1.02]'
                                         }`}
                                 >
                                     <input
@@ -268,10 +269,10 @@ export default function Analyze() {
                                     <label htmlFor="experian-upload" className="cursor-pointer block">
                                         {files.experian ? (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+                                                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                                                     <FileText className="w-7 h-7 text-primary" />
                                                 </div>
-                                                <p className="text-sm font-semibold truncate max-w-full">
+                                                <p className="text-sm font-semibold text-gray-900 truncate max-w-full">
                                                     {files.experian?.name}
                                                 </p>
                                                 <button
@@ -286,11 +287,11 @@ export default function Analyze() {
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                                                    <Upload className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                                    <Upload className="w-7 h-7 text-gray-400 group-hover:text-primary transition-colors" />
                                                 </div>
-                                                <p className="text-sm font-semibold">Upload PDF</p>
-                                                <p className="text-xs text-muted-foreground">Click to browse</p>
+                                                <p className="text-sm font-semibold text-gray-900">Upload PDF</p>
+                                                <p className="text-xs text-gray-500">Click to browse</p>
                                             </div>
                                         )}
                                     </label>
@@ -304,8 +305,8 @@ export default function Analyze() {
                                 </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${files.equifax
-                                            ? 'border-info bg-info/15 shadow-lg shadow-info/20'
-                                            : 'border-border bg-card/50 hover:border-info/50 hover:bg-info/5 hover:shadow-lg hover:shadow-info/10 group-hover:scale-[1.02]'
+                                            ? 'border-blue-500 bg-blue-50 shadow-lg'
+                                            : 'border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 hover:shadow-lg group-hover:scale-[1.02]'
                                         }`}
                                 >
                                     <input
@@ -319,10 +320,10 @@ export default function Analyze() {
                                     <label htmlFor="equifax-upload" className="cursor-pointer block">
                                         {files.equifax ? (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-info/20 flex items-center justify-center">
-                                                    <FileText className="w-7 h-7 text-info" />
+                                                <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                                                    <FileText className="w-7 h-7 text-blue-600" />
                                                 </div>
-                                                <p className="text-sm font-semibold truncate max-w-full">
+                                                <p className="text-sm font-semibold text-gray-900 truncate max-w-full">
                                                     {files.equifax?.name}
                                                 </p>
                                                 <button
@@ -330,18 +331,18 @@ export default function Analyze() {
                                                         e.preventDefault();
                                                         removeFile('equifax');
                                                     }}
-                                                    className="text-xs text-info hover:opacity-80 flex items-center gap-1 px-3 py-1 rounded-full bg-info/10 hover:bg-info/20 transition-colors"
+                                                    className="text-xs text-blue-600 hover:opacity-80 flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
                                                 >
                                                     <X className="w-3 h-3" /> Remove
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center group-hover:bg-info/10 transition-colors">
-                                                    <Upload className="w-7 h-7 text-muted-foreground group-hover:text-info transition-colors" />
+                                                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                                                    <Upload className="w-7 h-7 text-gray-400 group-hover:text-blue-600 transition-colors" />
                                                 </div>
-                                                <p className="text-sm font-semibold">Upload PDF</p>
-                                                <p className="text-xs text-muted-foreground">Click to browse</p>
+                                                <p className="text-sm font-semibold text-gray-900">Upload PDF</p>
+                                                <p className="text-xs text-gray-500">Click to browse</p>
                                             </div>
                                         )}
                                     </label>
@@ -355,8 +356,8 @@ export default function Analyze() {
                                 </div>
                                 <div
                                     className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${files.transunion
-                                            ? 'border-success bg-success/15 shadow-lg shadow-success/20'
-                                            : 'border-border bg-card/50 hover:border-success/50 hover:bg-success/5 hover:shadow-lg hover:shadow-success/10 group-hover:scale-[1.02]'
+                                            ? 'border-green-500 bg-green-50 shadow-lg'
+                                            : 'border-gray-200 bg-gray-50 hover:border-green-400 hover:bg-green-50 hover:shadow-lg group-hover:scale-[1.02]'
                                         }`}
                                 >
                                     <input
@@ -370,10 +371,10 @@ export default function Analyze() {
                                     <label htmlFor="transunion-upload" className="cursor-pointer block">
                                         {files.transunion ? (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-success/20 flex items-center justify-center">
-                                                    <FileText className="w-7 h-7 text-success" />
+                                                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                                                    <FileText className="w-7 h-7 text-green-600" />
                                                 </div>
-                                                <p className="text-sm font-semibold truncate max-w-full">
+                                                <p className="text-sm font-semibold text-gray-900 truncate max-w-full">
                                                     {files.transunion?.name}
                                                 </p>
                                                 <button
@@ -381,18 +382,18 @@ export default function Analyze() {
                                                         e.preventDefault();
                                                         removeFile('transunion');
                                                     }}
-                                                    className="text-xs text-success hover:opacity-80 flex items-center gap-1 px-3 py-1 rounded-full bg-success/10 hover:bg-success/20 transition-colors"
+                                                    className="text-xs text-green-600 hover:opacity-80 flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
                                                 >
                                                     <X className="w-3 h-3" /> Remove
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center group-hover:bg-success/10 transition-colors">
-                                                    <Upload className="w-7 h-7 text-muted-foreground group-hover:text-success transition-colors" />
+                                                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                                                    <Upload className="w-7 h-7 text-gray-400 group-hover:text-green-600 transition-colors" />
                                                 </div>
-                                                <p className="text-sm font-semibold">Upload PDF</p>
-                                                <p className="text-xs text-muted-foreground">Click to browse</p>
+                                                <p className="text-sm font-semibold text-gray-900">Upload PDF</p>
+                                                <p className="text-xs text-gray-500">Click to browse</p>
                                             </div>
                                         )}
                                     </label>
@@ -401,19 +402,19 @@ export default function Analyze() {
                         </div>
 
                         {/* Info Box */}
-                        <div className="glass-panel rounded-2xl p-5 border-l-4 border-l-info">
-                            <h4 className="font-semibold mb-3 text-info">Why Upload All Three?</h4>
-                            <ul className="text-sm text-muted-foreground space-y-2 font-light">
-                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-info" /> Detect discrepancies between bureaus (amounts, dates, statuses)</li>
-                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-info" /> Find accounts reported to some bureaus but not others</li>
-                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-info" /> Identify duplicate accounts across different bureaus</li>
-                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-info" /> Maximize your chances of finding FCRA violations</li>
+                        <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100 border-l-4 border-l-blue-500">
+                            <h4 className="font-semibold mb-3 text-blue-700">Why Upload All Three?</h4>
+                            <ul className="text-sm text-gray-600 space-y-2 font-light">
+                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-500" /> Detect discrepancies between bureaus (amounts, dates, statuses)</li>
+                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-500" /> Find accounts reported to some bureaus but not others</li>
+                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-500" /> Identify duplicate accounts across different bureaus</li>
+                                <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-500" /> Maximize your chances of finding FCRA violations</li>
                             </ul>
                         </div>
 
                         {/* Error Message */}
                         {error && (
-                            <div className="rounded-2xl p-4 text-center border border-destructive/30 bg-destructive/10 text-destructive">
+                            <div className="rounded-2xl p-4 text-center border border-red-200 bg-red-50 text-red-600">
                                 {error}
                             </div>
                         )}
@@ -421,11 +422,11 @@ export default function Analyze() {
                         {/* Progress Bar */}
                         {analyzing && (
                             <div className="space-y-3">
-                                <div className="flex justify-between text-sm text-muted-foreground">
+                                <div className="flex justify-between text-sm text-gray-600">
                                     <span className="font-light">Analyzing your credit reports and comparing bureaus...</span>
                                     <span className="font-medium">{progress}%</span>
                                 </div>
-                                <div className="h-2 rounded-full overflow-hidden bg-border">
+                                <div className="h-2 rounded-full overflow-hidden bg-gray-200">
                                     <div
                                         className="h-full transition-all duration-300 bg-primary rounded-full"
                                         style={{
@@ -442,27 +443,27 @@ export default function Analyze() {
                             <button
                                 onClick={handleAnalyzeClick}
                                 disabled={!hasAnyFile || analyzing}
-                                className={`w-full btn-pill text-lg font-semibold transition-all ${
+                                className={`w-full py-4 px-8 rounded-full text-lg font-semibold transition-all ${
                                     !hasAnyFile || analyzing
-                                        ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
-                                        : 'bg-primary text-primary-foreground btn-glow animate-[pulse-glow_2s_ease-in-out_infinite]'
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl'
                                 }`}
                             >
                                 {analyzing ? 'Analyzing...' : hasAnyFile ? 'Analyze Credit Reports' : 'Upload At Least One Report'}
                             </button>
                             
                             {/* Trust Badge */}
-                            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
                                 <span className="flex items-center gap-1.5">
-                                    <Shield className="w-3.5 h-3.5 text-success" />
+                                    <Shield className="w-3.5 h-3.5 text-green-600" />
                                     Bank-level security
                                 </span>
-                                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                <span className="w-1 h-1 rounded-full bg-gray-300" />
                                 <span className="flex items-center gap-1.5">
-                                    <CheckCircle className="w-3.5 h-3.5 text-info" />
+                                    <CheckCircle className="w-3.5 h-3.5 text-blue-500" />
                                     FCRA compliant
                                 </span>
-                                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                <span className="w-1 h-1 rounded-full bg-gray-300" />
                                 <span>Files deleted after analysis</span>
                             </div>
                         </div>
@@ -470,10 +471,41 @@ export default function Analyze() {
                 </div>
 
                 {/* Security Notice */}
-                <div className="mt-8 text-center text-sm text-muted-foreground animate-reveal-delay-2">
+                <div className="mt-8 text-center text-sm text-gray-500 animate-reveal-delay-2">
                     <p className="font-light">Your data is processed securely and never stored permanently</p>
                 </div>
             </div>
+
+            {/* Professional Footer */}
+            <footer className="relative z-10 bg-gray-900 text-white">
+                <div className="max-w-7xl mx-auto px-6 py-16">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
+                        <div className="flex items-center gap-4">
+                            <img
+                                src={consumerLogo}
+                                alt="Consumer Advocate Resolution Center"
+                                className="h-16 w-auto brightness-0 invert"
+                            />
+                        </div>
+                        <div className="flex flex-col md:flex-row items-center gap-6">
+                            <a href="tel:1-888-817-2272" className="text-lg font-semibold hover:text-primary transition-colors">
+                                1-888-817-CARC (2272)
+                            </a>
+                            <Link to="/">
+                                <button className="px-6 py-3 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 transition-all shadow-lg">
+                                    Back to Home
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-700 pt-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-gray-400 text-sm">
+                            <p>© 2026 Consumer Advocate Resolution Center. All Rights Reserved.</p>
+                            <p>Your data is processed securely and never stored.</p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
 
             {/* Lead Capture Dialog */}
             <LeadCaptureDialog
