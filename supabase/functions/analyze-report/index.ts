@@ -40,40 +40,41 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // ============================================
 const STEP1_EXTRACT_PROMPT = `You are a credit report data extractor. Extract structured data from the credit report PDFs.
 
-RULES:
-- Mask sensitive data (only last 4 of SSN/account numbers)
-- If information is missing, say "Not shown in report"
-- Be precise and accurate
+CRITICAL: Keep your response UNDER 4000 tokens total. Be concise.
 
-Extract and return JSON with this EXACT structure (keep response under 8000 tokens):
+RULES:
+- Mask sensitive data (only last 4 of SSN/account numbers)  
+- If information is missing, use null
+- Limit masterTradelineTable to TOP 15 accounts only (prioritize: collections, charge-offs, late payments)
+- Limit inquiries to TOP 10 most recent
+- Keep all string values SHORT (max 50 chars)
+
+Return JSON with this structure:
 {
   "reportSummary": {
     "reportDate": "string",
-    "consumerName": "string (masked)",
+    "consumerName": "string",
     "totalAccountsAnalyzed": number,
-    "fileSource": "string",
     "consumerState": "string or null",
     "bureausAnalyzed": ["EQ", "EX", "TU"]
   },
   "personalInfoMismatches": [
-    { "type": "names/addresses/employers", "equifaxValue": "string", "experianValue": "string", "transunionValue": "string", "concern": "string" }
+    { "type": "string", "equifaxValue": "string", "experianValue": "string", "transunionValue": "string", "concern": "string" }
   ],
   "inquiries": [
     { "date": "string", "requesterName": "string", "type": "hard/soft", "bureau": "EQ/EX/TU" }
   ],
   "masterTradelineTable": [
     {
-      "groupId": "string",
       "furnisherName": "string",
-      "accountType": "revolving/installment/mortgage/collection/other",
+      "accountType": "string",
       "openDate": "string",
       "accountNumberLast4": "string",
       "originalAmount": "string",
-      "remarks": "string",
       "perBureauData": {
-        "equifax": { "status": "string", "currentBalance": "string", "creditLimit": "string", "lastReportedDate": "string", "remarks": "string" },
-        "experian": { "status": "string", "currentBalance": "string", "creditLimit": "string", "lastReportedDate": "string", "remarks": "string" },
-        "transunion": { "status": "string", "currentBalance": "string", "creditLimit": "string", "lastReportedDate": "string", "remarks": "string" }
+        "equifax": { "status": "string", "currentBalance": "string", "creditLimit": "string" },
+        "experian": { "status": "string", "currentBalance": "string", "creditLimit": "string" },
+        "transunion": { "status": "string", "currentBalance": "string", "creditLimit": "string" }
       },
       "discrepanciesNoted": ["string"]
     }
@@ -81,12 +82,9 @@ Extract and return JSON with this EXACT structure (keep response under 8000 toke
   "publicRecords": {
     "bankruptcyPresent": false,
     "bankruptcyType": "string or null",
-    "filingDate": "string or null",
-    "dischargeDate": "string or null"
+    "filingDate": "string or null"
   }
-}
-
-IMPORTANT: Limit masterTradelineTable to the TOP 25 most significant accounts (prioritize: collections, charge-offs, late payments, high balances).`;
+}`;
 
 // ============================================
 // STEP 2 PROMPT: Analyze Credit Health
@@ -209,13 +207,15 @@ async function callGemini(
   systemPrompt: string, 
   userContent: string, 
   fileParts: Array<{ inline_data: { mime_type: string; data: string } } | { text: string }> = []
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
+): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
     const parts = [
       { text: systemPrompt },
       { text: userContent },
       ...fileParts
     ];
+
+    console.log(`Calling Gemini with prompt length: ${systemPrompt.length + userContent.length} chars`);
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -225,7 +225,7 @@ async function callGemini(
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.1,
-          maxOutputTokens: 16384
+          maxOutputTokens: 32768
         }
       }),
     });
@@ -237,12 +237,23 @@ async function callGemini(
     }
 
     const data = await response.json();
+    
+    // Check for finish reason
+    const finishReason = data.candidates?.[0]?.finishReason;
+    console.log(`Gemini finish reason: ${finishReason}`);
+    
+    if (finishReason === 'MAX_TOKENS') {
+      console.error('Response was truncated due to MAX_TOKENS');
+    }
+    
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!content) {
-      console.error('No content in Gemini response');
+      console.error('No content in Gemini response:', JSON.stringify(data).substring(0, 500));
       return { success: false, error: 'Empty response from AI' };
     }
+
+    console.log(`Response length: ${content.length} chars`);
 
     // Parse JSON with repair logic
     try {
@@ -250,11 +261,15 @@ async function callGemini(
       return { success: true, data: parsed };
     } catch (parseError) {
       console.log('JSON parse failed, attempting repair...');
+      console.log('First 500 chars:', content.substring(0, 500));
+      console.log('Last 500 chars:', content.substring(content.length - 500));
+      
       const repaired = repairJson(content);
       if (repaired) {
+        console.log('JSON repair successful');
         return { success: true, data: repaired };
       }
-      return { success: false, error: 'Failed to parse response' };
+      return { success: false, error: 'Failed to parse response', rawResponse: content.substring(0, 1000) };
     }
   } catch (error) {
     console.error('Gemini call error:', error);
