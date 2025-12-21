@@ -282,8 +282,38 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Report Header with Name and Date */}
+        <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Credit Report Analysis For</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                {lead?.name || results?.reportSummary?.consumerName || 'Consumer'}
+              </h1>
+            </div>
+            <div className="text-left md:text-right">
+              <p className="text-sm text-gray-500 mb-1">Scan Completed</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long',
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric'
+                })}
+              </p>
+              <p className="text-sm text-gray-600">
+                {new Date().toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">3-Bureau Credit Report Audit</h1>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">3-Bureau Credit Report Audit</h2>
           <p className="text-gray-600">Comprehensive credit health analysis with issue flagging</p>
         </div>
 
