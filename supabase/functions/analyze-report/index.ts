@@ -765,20 +765,62 @@ Provide the consumer action plan with:
             console.error('Failed to parse Gemini response as JSON:', parseError);
             console.log('Raw content length:', content.length);
             
-            // Try to repair truncated JSON by adding closing brackets
+            // Enhanced JSON repair for truncated responses
             let repairedContent = content;
             
-            // Count opening and closing braces/brackets
-            const openBraces = (content.match(/\{/g) || []).length;
-            const closeBraces = (content.match(/\}/g) || []).length;
-            const openBrackets = (content.match(/\[/g) || []).length;
-            const closeBrackets = (content.match(/\]/g) || []).length;
+            // Step 1: Find the last complete property by looking for patterns like "},", "],", or complete key-value pairs
+            // Remove any trailing incomplete property (unclosed string value)
+            const lastCompleteObjectPattern = /[}\]"]\s*,?\s*"[^"]*"?\s*:?\s*"?[^"{}[\]]*$/;
+            repairedContent = repairedContent.replace(lastCompleteObjectPattern, (match: string) => {
+              // Keep only the closing bracket/brace if present
+              const closingMatch = match.match(/^[}\]]/);
+              return closingMatch ? closingMatch[0] : '';
+            });
             
-            // Try to close unclosed strings, arrays, and objects
-            repairedContent = repairedContent.replace(/,\s*"[^"]*$/, '');
-            repairedContent = repairedContent.replace(/,\s*$/, '');
+            // Step 2: Remove incomplete trailing content more aggressively
+            // Pattern: incomplete string at end like: "someKey": "unclosed value
+            repairedContent = repairedContent.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, '');
+            repairedContent = repairedContent.replace(/,\s*"[^"]*"\s*:\s*$/g, '');
+            repairedContent = repairedContent.replace(/,\s*"[^"]*$/g, '');
+            repairedContent = repairedContent.replace(/,\s*$/g, '');
             
-            // Add missing closing brackets and braces
+            // Step 3: Handle unclosed strings by finding odd quote counts
+            const quoteCount = (repairedContent.match(/(?<!\\)"/g) || []).length;
+            if (quoteCount % 2 !== 0) {
+              // Find last quote and truncate content after incomplete string
+              const lastQuoteIndex = repairedContent.lastIndexOf('"');
+              const secondLastQuoteIndex = repairedContent.lastIndexOf('"', lastQuoteIndex - 1);
+              if (secondLastQuoteIndex > 0) {
+                // Check if this is a value string by looking for : before it
+                const beforeSecondLast = repairedContent.substring(0, secondLastQuoteIndex);
+                const colonIndex = beforeSecondLast.lastIndexOf(':');
+                const commaIndex = beforeSecondLast.lastIndexOf(',');
+                const braceIndex = beforeSecondLast.lastIndexOf('{');
+                
+                if (colonIndex > commaIndex && colonIndex > braceIndex) {
+                  // This is an incomplete value, truncate to before the colon's key
+                  const keyStartIndex = beforeSecondLast.lastIndexOf('"');
+                  if (keyStartIndex > 0) {
+                    repairedContent = repairedContent.substring(0, keyStartIndex).replace(/,\s*$/, '');
+                  }
+                } else {
+                  // Just add closing quote
+                  repairedContent += '"';
+                }
+              }
+            }
+            
+            // Step 4: Count and add missing brackets/braces
+            const openBraces = (repairedContent.match(/\{/g) || []).length;
+            const closeBraces = (repairedContent.match(/\}/g) || []).length;
+            const openBrackets = (repairedContent.match(/\[/g) || []).length;
+            const closeBrackets = (repairedContent.match(/\]/g) || []).length;
+            
+            // Clean trailing commas before closing
+            repairedContent = repairedContent.replace(/,(\s*)$/, '$1');
+            repairedContent = repairedContent.replace(/,(\s*)([\]}])/g, '$1$2');
+            
+            // Add missing closures in correct order (arrays before objects)
             for (let i = 0; i < openBrackets - closeBrackets; i++) {
               repairedContent += ']';
             }
@@ -786,27 +828,78 @@ Provide the consumer action plan with:
               repairedContent += '}';
             }
             
+            console.log('Attempting to parse repaired JSON, length:', repairedContent.length);
+            
             try {
               analysisResult = JSON.parse(repairedContent);
               console.log('Successfully repaired and parsed JSON');
             } catch (repairError) {
-              console.error('JSON repair failed:', repairError);
-              // Return a minimal valid result
-              analysisResult = {
-                reportSummary: {
-                  reportDate: "Unknown",
-                  consumerName: "Unknown",
-                  totalAccountsAnalyzed: 0,
-                  fileSource: bureauNames.join('/')
-                },
-                executiveSummary: [{ bullet: "Analysis completed but response was truncated. Please try again." }],
-                legalSummary: {
-                  totalViolations: 0,
-                  attorneyReferralRecommended: false,
-                  estimatedDamagesPotential: "Unknown"
-                },
-                summary: "Analysis completed but response was truncated. Please try again or contact support."
-              };
+              console.error('Initial JSON repair failed:', repairError);
+              
+              // Step 5: Last resort - try to extract valid JSON by finding matching braces
+              try {
+                // Find the outermost complete object
+                let braceDepth = 0;
+                let lastValidEnd = -1;
+                let inString = false;
+                let escapeNext = false;
+                
+                for (let i = 0; i < content.length; i++) {
+                  const char = content[i];
+                  
+                  if (escapeNext) {
+                    escapeNext = false;
+                    continue;
+                  }
+                  
+                  if (char === '\\' && inString) {
+                    escapeNext = true;
+                    continue;
+                  }
+                  
+                  if (char === '"') {
+                    inString = !inString;
+                    continue;
+                  }
+                  
+                  if (!inString) {
+                    if (char === '{') {
+                      braceDepth++;
+                    } else if (char === '}') {
+                      braceDepth--;
+                      if (braceDepth === 0) {
+                        lastValidEnd = i + 1;
+                      }
+                    }
+                  }
+                }
+                
+                if (lastValidEnd > 0) {
+                  const truncatedJson = content.substring(0, lastValidEnd);
+                  analysisResult = JSON.parse(truncatedJson);
+                  console.log('Successfully parsed truncated JSON at position:', lastValidEnd);
+                } else {
+                  throw new Error('Could not find valid JSON boundary');
+                }
+              } catch (finalError) {
+                console.error('All JSON repair attempts failed:', finalError);
+                // Return a minimal valid result
+                analysisResult = {
+                  reportSummary: {
+                    reportDate: "Unknown",
+                    consumerName: "Unknown",
+                    totalAccountsAnalyzed: 0,
+                    fileSource: bureauNames.join('/')
+                  },
+                  executiveSummary: [{ bullet: "Analysis completed but response was truncated. Please try again with smaller PDF files or fewer bureaus." }],
+                  legalSummary: {
+                    totalViolations: 0,
+                    attorneyReferralRecommended: false,
+                    estimatedDamagesPotential: "Unknown"
+                  },
+                  summary: "The analysis response was too large and got truncated. Please try again. If the issue persists, try uploading fewer bureaus at once."
+                };
+              }
             }
           }
 
