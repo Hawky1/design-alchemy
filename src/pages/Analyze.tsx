@@ -5,7 +5,7 @@ import AnalysisResults from '@/components/analysis-results';
 import LeadCaptureDialog, { LeadData } from '@/components/lead-capture-dialog';
 import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
-import carcLogo from '@/assets/carc-logo.webp';
+import consumerLogo from '@/assets/consumer-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { SettlementsBanner } from '@/components/settlements-banner';
 
@@ -184,15 +184,13 @@ export default function Analyze() {
             {/* Settlements Banner */}
             <SettlementsBanner />
 
-            <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-white/30 shadow-lg">
+                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img
-                            src={carcLogo}
+                            src={consumerLogo}
                             alt="Consumer Advocate Resolution Center"
-                            width={180}
-                            height={60}
-                            className="h-14 w-auto"
+                            className="h-16 w-auto"
                         />
                     </Link>
                     <Link to="/">

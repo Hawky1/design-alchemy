@@ -8,7 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ebookCover from '@/assets/ebook-cover.png';
 import breakingNewsBanner from '@/assets/breaking-news-banner.png';
+import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
+import { Link } from 'react-router-dom';
 
 export default function FreeEbook() {
   const [name, setName] = useState('');
@@ -137,6 +139,15 @@ export default function FreeEbook() {
       </video>
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-background/40 z-[1]" />
+      
+      {/* Header */}
+      <header className="sticky top-0 z-40 py-4 px-6 border-b border-white/30 bg-white/80 backdrop-blur-xl shadow-lg">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link to="/">
+            <img src={consumerLogo} alt="Consumer Advocate Resolution Center" className="h-14 w-auto" />
+          </Link>
+        </div>
+      </header>
       
       <main className="relative z-10 min-h-screen flex flex-col justify-center px-4 py-12">
         <div className="w-full max-w-5xl mx-auto animate-reveal">
