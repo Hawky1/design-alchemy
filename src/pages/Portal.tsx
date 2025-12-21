@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Book, FileText, ScanSearch, Phone, CheckCircle, Circle, ArrowRight, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLead } from '@/lib/lead-context';
-import carcLogo from '@/assets/carc-logo.webp';
+import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
 
 interface Step {
@@ -108,10 +108,10 @@ export default function Portal() {
       <SettlementsBanner />
       
       {/* Header */}
-      <header className="sticky top-0 z-40 py-4 px-6 border-b border-border bg-white shadow-sm">
+      <header className="sticky top-0 z-40 py-4 px-6 border-b border-white/20 bg-white/70 backdrop-blur-xl shadow-lg">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/">
-            <img src={carcLogo} alt="CARC Logo" className="h-10 w-auto" />
+            <img src={consumerLogo} alt="Consumer Advocate Resolution Center" className="h-14 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-foreground hidden sm:block">
