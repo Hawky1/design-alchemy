@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import carcLogo from '@/assets/carc-header-logo.png';
+import acrLogo from '@/assets/annualcreditreport-logo-color.png';
 
 interface AnalysisResultsProps {
   results: AnalysisResult;
@@ -285,7 +286,20 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
         {/* Report Header with Name and Date */}
         <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-500 mb-1">Credit Report Analysis For</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                {lead?.name || results?.reportSummary?.consumerName || 'Consumer'}
+              </h1>
+            </div>
+            <div className="flex-shrink-0">
+              <img 
+                src={acrLogo} 
+                alt="AnnualCreditReport.com" 
+                className="h-10 md:h-12 w-auto"
+              />
+            </div>
+            <div className="flex-1 text-left md:text-right">
               <p className="text-sm text-gray-500 mb-1">Credit Report Analysis For</p>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                 {lead?.name || results?.reportSummary?.consumerName || 'Consumer'}
