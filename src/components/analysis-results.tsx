@@ -300,12 +300,6 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
               />
             </div>
             <div className="flex-1 text-left md:text-right">
-              <p className="text-sm text-gray-500 mb-1">Credit Report Analysis For</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                {lead?.name || results?.reportSummary?.consumerName || 'Consumer'}
-              </h1>
-            </div>
-            <div className="text-left md:text-right">
               <p className="text-sm text-gray-500 mb-1">Scan Completed</p>
               <p className="text-lg font-semibold text-gray-900">
                 {new Date().toLocaleDateString('en-US', { 
