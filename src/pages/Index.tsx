@@ -303,10 +303,33 @@ export default function Index() {
 
 
             {/* Footer */}
-            <footer className="bg-white border-t border-gray-200">
-                <div className="max-w-7xl mx-auto px-6 py-10 text-center text-gray-600">
-                    <p className="mb-2 font-light">© 2024 Consumer Advocate Resolution Center. All Rights Reserved.</p>
-                    <p className="text-sm font-light">Your data is processed securely and never stored. | Call: 1-888-817-CARC (2272)</p>
+            <footer className="bg-gray-900 text-white">
+                <div className="max-w-7xl mx-auto px-6 py-16">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
+                        <div className="flex items-center gap-4">
+                            <img
+                                src={consumerLogo}
+                                alt="Consumer Advocate Resolution Center"
+                                className="h-16 w-auto brightness-0 invert"
+                            />
+                        </div>
+                        <div className="flex flex-col md:flex-row items-center gap-6">
+                            <a href="tel:1-888-817-2272" className="text-lg font-semibold hover:text-primary transition-colors">
+                                1-888-817-CARC (2272)
+                            </a>
+                            <Link to="/analyze">
+                                <button className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-lg">
+                                    Start Free Analysis
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-700 pt-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-gray-400 text-sm">
+                            <p>© 2026 Consumer Advocate Resolution Center. All Rights Reserved.</p>
+                            <p>Your data is processed securely and never stored.</p>
+                        </div>
+                    </div>
                 </div>
             </footer>
         </div>
