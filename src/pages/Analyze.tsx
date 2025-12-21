@@ -7,6 +7,7 @@ import Hls from 'hls.js';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import carcLogo from '@/assets/carc-logo.webp';
 import { supabase } from '@/integrations/supabase/client';
+import { SettlementsBanner } from '@/components/settlements-banner';
 
 interface BureauFiles {
     experian: File | null;
@@ -180,7 +181,10 @@ export default function Analyze() {
                 playsInline
             />
 
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
+            {/* Settlements Banner */}
+            <SettlementsBanner />
+
+            <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
                         <img

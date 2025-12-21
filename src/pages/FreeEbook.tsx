@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ebookCover from '@/assets/ebook-cover.png';
 import breakingNewsBanner from '@/assets/breaking-news-banner.png';
+import { SettlementsBanner } from '@/components/settlements-banner';
 
 export default function FreeEbook() {
   const [name, setName] = useState('');
@@ -122,6 +123,8 @@ export default function FreeEbook() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Settlements Banner */}
+      <SettlementsBanner />
       {/* Video Background */}
       <video
         autoPlay

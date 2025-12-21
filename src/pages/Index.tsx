@@ -1,7 +1,7 @@
-
 import { Link } from 'react-router-dom';
 import { FileText, Shield, TrendingUp, AlertCircle, BarChart3, CheckCircle } from 'lucide-react';
 import carcLogo from '@/assets/carc-logo.webp';
+import { SettlementsBanner } from '@/components/settlements-banner';
 
 export default function Index() {
     return (
@@ -13,8 +13,11 @@ export default function Index() {
                 <div className="ambient-orb ambient-orb-primary absolute top-[60%] left-[20%] w-[20%] h-[20%]" />
             </div>
 
+            {/* Settlements Banner */}
+            <SettlementsBanner />
+
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
+            <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-200/50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <img
@@ -33,7 +36,7 @@ export default function Index() {
                 </div>
             </header>
 
-            {/* Hero Section */}
+            {/* Hero Section - adjusted for sticky header */}
             <section className="relative pt-32 pb-24 px-6 min-h-[90vh] flex items-center overflow-hidden isolate">
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0 bg-black">
