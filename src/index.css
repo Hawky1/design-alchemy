@@ -250,3 +250,63 @@
     text-wrap: balance;
   }
 }
+
+/* Print styles for analysis results */
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .print-expand {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  
+  .print-container {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+  
+  .print-header {
+    position: relative !important;
+    background: white !important;
+    border-bottom: 2px solid #e5e7eb !important;
+    padding: 1rem !important;
+  }
+  
+  /* Force dark sections to be light for printing */
+  .print-container .rounded-2xl {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+  }
+  
+  .print-container .text-neutral-100,
+  .print-container .text-neutral-200,
+  .print-container .text-neutral-300,
+  .print-container .text-neutral-400 {
+    color: #374151 !important;
+  }
+  
+  .print-container h1,
+  .print-container h2,
+  .print-container h3 {
+    color: #111827 !important;
+  }
+}
