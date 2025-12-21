@@ -20,7 +20,6 @@ export function BookCallCTA({
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-destructive border-2 border-primary/50 shadow-2xl">
       {/* Decorative Elements */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-72 h-72 bg-black/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent" />
       
       <div className="relative p-8 md:p-10 space-y-6">
