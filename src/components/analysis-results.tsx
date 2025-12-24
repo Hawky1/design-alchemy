@@ -2,7 +2,8 @@ import {
   ArrowLeft, AlertTriangle, CheckCircle, Shield, FileText, Scale, Gavel, 
   BookOpen, FileWarning, Clock, Copy, UserX, DollarSign, Building, Phone, 
   AlertOctagon, TrendingUp, Calendar, PieChart, Target, ClipboardList,
-  HelpCircle, AlertCircle, Ban, ChevronDown, ChevronUp, Printer, Download
+  HelpCircle, AlertCircle, Ban, ChevronDown, ChevronUp, Printer, Download,
+  CreditCard
 } from 'lucide-react';
 import { AnalysisResult } from '@/lib/analysis-schema';
 import { BookCallCTA } from '@/components/book-call-cta';
@@ -27,9 +28,11 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
     utilization: true,
     ageOfCredit: false,
     creditMix: false,
+    activeAccounts: true,
     issueFlags: true,
     actionPlan: true,
   });
+  const [showAllAccounts, setShowAllAccounts] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -649,6 +652,122 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             )}
           </div>
         )}
+
+        {/* Active Accounts */}
+        {(() => {
+          const rawResults = results as any;
+          const rows = rawResults?.accounts ?? results?.masterTradelineTable ?? [];
+          if (rows.length === 0) return null;
+
+          // Sort: items with potentialViolation first, then by balance descending
+          const sortedRows = [...rows].sort((a: any, b: any) => {
+            const aHasViolation = a.potentialViolation != null;
+            const bHasViolation = b.potentialViolation != null;
+            if (aHasViolation && !bHasViolation) return -1;
+            if (!aHasViolation && bHasViolation) return 1;
+            const aBalance = typeof a.balance === 'number' ? a.balance : parseFloat(String(a.balance || 0).replace(/[^0-9.-]/g, '')) || 0;
+            const bBalance = typeof b.balance === 'number' ? b.balance : parseFloat(String(b.balance || 0).replace(/[^0-9.-]/g, '')) || 0;
+            return bBalance - aBalance;
+          });
+
+          const displayRows = showAllAccounts ? sortedRows : sortedRows.slice(0, 15);
+          const hasBureausColumn = rows.some((r: any) => r.bureaus);
+
+          const getViolationPill = (violation: string | null | undefined) => {
+            if (!violation) {
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
+            }
+            const v = violation.toLowerCase();
+            let label = 'Potential issue';
+            if (v.includes('1099')) label = 'Wrong Amount / 1099-C';
+            else if (v.includes('duplicate')) label = 'Duplicate';
+            return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">{label}</span>;
+          };
+
+          const formatBalance = (balance: any) => {
+            if (balance == null) return '$0';
+            const num = typeof balance === 'number' ? balance : parseFloat(String(balance).replace(/[^0-9.-]/g, '')) || 0;
+            return `$${num.toLocaleString()}`;
+          };
+
+          const bureauLabels: Record<string, string> = {
+            equifax: 'EQF',
+            experian: 'EXP',
+            transunion: 'TU',
+          };
+
+          return (
+            <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-6 mb-6">
+              <SectionHeader 
+                icon={CreditCard} 
+                title="Active Accounts" 
+                subtitle="Account overview with violation check"
+                section="activeAccounts"
+                iconColor="text-indigo-600"
+              />
+              {expandedSections.activeAccounts && (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Account</th>
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Type</th>
+                          <th className="text-right py-2 px-2 font-semibold text-gray-700">Balance</th>
+                          {hasBureausColumn && <th className="text-left py-2 px-2 font-semibold text-gray-700">Bureaus</th>}
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Status</th>
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Violation Check</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayRows.map((row: any, idx: number) => {
+                          const accountLabel = row.account || row.name || row.furnisherName || 'Unknown';
+                          const accountType = row.type || row.accountType || '—';
+                          const balance = formatBalance(row.balance || row.currentBalance);
+                          const status = row.status || 'Unknown';
+                          const bureaus = row.bureaus as string[] | undefined;
+
+                          return (
+                            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2 px-2 text-gray-900 font-medium max-w-[200px] truncate">{accountLabel}</td>
+                              <td className="py-2 px-2 text-gray-600">{accountType}</td>
+                              <td className="py-2 px-2 text-gray-900 text-right">{balance}</td>
+                              {hasBureausColumn && (
+                                <td className="py-2 px-2">
+                                  <div className="flex gap-1">
+                                    {bureaus?.map((b: string, bIdx: number) => (
+                                      <span key={bIdx} className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
+                                        {bureauLabels[b.toLowerCase()] || b}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                              )}
+                              <td className="py-2 px-2">
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+                                  {status}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2">{getViolationPill(row.potentialViolation)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {sortedRows.length > 15 && (
+                    <button
+                      onClick={() => setShowAllAccounts(!showAllAccounts)}
+                      className="mt-4 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      {showAllAccounts ? 'Show less' : `Show more (${sortedRows.length - 15} more)`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 6-Category Issue Flags */}
         {results?.sixCategoryIssueFlags && totalIssueFlags > 0 && (
