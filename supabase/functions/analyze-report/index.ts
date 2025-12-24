@@ -325,32 +325,27 @@ async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
   }
 }
 
-// Helper function to call OpenAI Responses API with PDF files
-async function callOpenAIWithPdfs(
+// Helper function to call OpenAI Responses API with a single PDF file
+async function callOpenAIWithPdf(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  fileIds: string[]
+  fileId: string,
+  bureauName: string
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    // Build content array with files and text
-    const content: Array<{ type: string; file_id?: string; text?: string }> = [];
-    
-    // Add file references
-    for (const fileId of fileIds) {
-      content.push({
+    const content = [
+      {
         type: 'input_file',
         file_id: fileId
-      });
-    }
+      },
+      {
+        type: 'input_text',
+        text: `${systemPrompt}\n\n${userPrompt}`
+      }
+    ];
     
-    // Add text prompt
-    content.push({
-      type: 'input_text',
-      text: `${systemPrompt}\n\n${userPrompt}`
-    });
-    
-    console.log(`Calling OpenAI Responses API with ${fileIds.length} files...`);
+    console.log(`Calling OpenAI Responses API for ${bureauName}...`);
     
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -359,7 +354,7 @@ async function callOpenAIWithPdfs(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',  // Use mini model to reduce token usage
         input: [
           {
             role: 'user',
@@ -376,38 +371,38 @@ async function callOpenAIWithPdfs(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI Responses API error:', response.status, errorText);
+      console.error(`OpenAI Responses API error for ${bureauName}:`, response.status, errorText);
       return { success: false, error: `API error: ${response.status} - ${errorText}` };
     }
     
     const data = await response.json();
-    console.log('OpenAI Responses API response received');
+    console.log(`OpenAI Responses API response received for ${bureauName}`);
     
     // Extract text content from response
     const outputText = data.output?.find((o: { type: string }) => o.type === 'message')?.content?.find((c: { type: string }) => c.type === 'output_text')?.text;
     
     if (!outputText) {
-      console.error('No text output in response:', JSON.stringify(data).substring(0, 500));
+      console.error(`No text output in ${bureauName} response:`, JSON.stringify(data).substring(0, 500));
       return { success: false, error: 'Empty response from AI' };
     }
     
-    console.log(`Response text length: ${outputText.length} chars`);
+    console.log(`${bureauName} response text length: ${outputText.length} chars`);
     
     // Parse JSON
     try {
       const parsed = JSON.parse(outputText);
       return { success: true, data: parsed };
     } catch (parseError) {
-      console.log('JSON parse failed, attempting repair...');
+      console.log(`JSON parse failed for ${bureauName}, attempting repair...`);
       const repaired = repairJson(outputText);
       if (repaired) {
-        console.log('JSON repair successful');
+        console.log(`JSON repair successful for ${bureauName}`);
         return { success: true, data: repaired };
       }
       return { success: false, error: 'Failed to parse response', rawResponse: outputText.substring(0, 1000) };
     }
   } catch (error) {
-    console.error('OpenAI Responses API call error:', error);
+    console.error(`OpenAI Responses API call error for ${bureauName}:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -735,7 +730,6 @@ serve(async (req) => {
       );
     }
 
-    const fileIds = uploadedFiles.map(f => f.fileId);
     console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files uploaded');
     
     // Streaming response
@@ -750,29 +744,52 @@ serve(async (req) => {
 
           sendProgress(5, 'PDF files uploaded to OpenAI...');
 
-          // ========== STEP 1: Extract Data (with PDF files) ==========
-          sendProgress(8, 'Step 1/4: Extracting data from credit reports...');
+          // ========== STEP 1: Extract Data from each PDF separately ==========
+          const allExtractedData: Record<string, unknown>[] = [];
+          let progressBase = 8;
+          const progressPerFile = Math.floor(18 / uploadedFiles.length);
           
-          const step1Result = await callOpenAIWithPdfs(
-            OPENAI_API_KEY,
-            STEP1_EXTRACT_PROMPT,
-            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}. Extract all tradelines, inquiries, and personal info mismatches.`,
-            fileIds
-          );
-
-          if (!step1Result.success) {
-            console.error('Step 1 failed:', step1Result.error);
-            // Cleanup uploaded files
-            for (const fileId of fileIds) {
-              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+          for (let i = 0; i < uploadedFiles.length; i++) {
+            const { bureau, fileId } = uploadedFiles[i];
+            sendProgress(progressBase + (i * progressPerFile), `Step 1/4: Extracting data from ${bureau} report...`);
+            
+            const result = await callOpenAIWithPdf(
+              OPENAI_API_KEY,
+              STEP1_EXTRACT_PROMPT,
+              `Analyze this ${bureau} credit report. Extract all tradelines, inquiries, and personal info.`,
+              fileId,
+              bureau
+            );
+            
+            if (!result.success) {
+              console.error(`Step 1 failed for ${bureau}:`, result.error);
+              // Cleanup uploaded files
+              for (const f of uploadedFiles) {
+                await deleteOpenAIFile(OPENAI_API_KEY, f.fileId);
+              }
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: `Failed to extract data from ${bureau} report. Please try again.` })}\n\n`));
+              controller.close();
+              return;
             }
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to extract data from reports. Please try again.' })}\n\n`));
-            controller.close();
-            return;
+            
+            allExtractedData.push({ bureau, data: result.data });
+            console.log(`Step 1 completed for ${bureau}`);
+            
+            // Delete file after processing to free up resources
+            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
           }
-
-          console.log('Step 1 completed: Data extracted');
-          const extractedData = step1Result.data as Record<string, unknown>;
+          
+          // Merge all extracted data
+          const extractedData = {
+            bureausAnalyzed: allExtractedData.map(d => d.bureau),
+            perBureauData: allExtractedData.reduce((acc, item) => {
+              acc[(item.bureau as string).toLowerCase()] = item.data;
+              return acc;
+            }, {} as Record<string, unknown>)
+          };
+          
+          console.log('Step 1 completed: All bureaus extracted');
+          sendProgress(28, 'Step 2/4: Analyzing credit health metrics...');
           sendProgress(28, 'Step 2/4: Analyzing credit health metrics...');
 
           // ========== STEP 2: Analyze Credit Health ==========
@@ -784,10 +801,6 @@ serve(async (req) => {
 
           if (!step2Result.success) {
             console.error('Step 2 failed:', step2Result.error);
-            // Cleanup uploaded files
-            for (const fileId of fileIds) {
-              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit health. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -808,10 +821,6 @@ serve(async (req) => {
 
           if (!step3Result.success) {
             console.error('Step 3 failed:', step3Result.error);
-            // Cleanup uploaded files
-            for (const fileId of fileIds) {
-              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to generate action plan. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -830,10 +839,6 @@ serve(async (req) => {
 
           if (!step4Result.success) {
             console.error('Step 4 failed:', step4Result.error);
-            // Cleanup uploaded files
-            for (const fileId of fileIds) {
-              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to format final report. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -843,10 +848,7 @@ serve(async (req) => {
           const formattedReport = step4Result.data as Record<string, unknown>;
           sendProgress(92, 'Finalizing comprehensive credit audit report...');
 
-          // Cleanup uploaded files from OpenAI
-          for (const fileId of fileIds) {
-            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-          }
+          // Files already deleted after Step 1
 
           // ========== Merge Results ==========
           const finalResult = {
@@ -865,10 +867,6 @@ serve(async (req) => {
           
         } catch (streamError) {
           console.error('Stream error:', streamError instanceof Error ? streamError.stack : streamError);
-          // Cleanup uploaded files on error
-          for (const fileId of fileIds) {
-            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-          }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'An error occurred. Please try again.' })}\n\n`));
           controller.close();
         }
