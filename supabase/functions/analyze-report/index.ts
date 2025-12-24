@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 // Allowed origins - add your production domain here
 const ALLOWED_ORIGINS = [
@@ -281,24 +281,10 @@ Return a JSON object with this structure:
 async function callOpenAI(
   apiKey: string, 
   systemPrompt: string, 
-  userContent: string, 
-  imageDataUrls: string[] = []
+  userContent: string
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    // Build message content array
-    const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-      { type: "text", text: userContent }
-    ];
-    
-    // Add images if provided
-    for (const imageDataUrl of imageDataUrls) {
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: imageDataUrl }
-      });
-    }
-
-    console.log(`Calling OpenAI with prompt length: ${systemPrompt.length + userContent.length} chars, ${imageDataUrls.length} images`);
+    console.log(`Calling OpenAI with prompt length: ${systemPrompt.length + userContent.length} chars`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -310,7 +296,7 @@ async function callOpenAI(
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: contentParts }
+          { role: 'user', content: userContent }
         ],
         max_tokens: 16384,
         temperature: 0.1,
@@ -578,42 +564,87 @@ serve(async (req) => {
       }
     }
 
-    // Convert PDF files to base64 data URLs for OpenAI vision
-    const imageDataUrls: string[] = [];
-    const bureauNames: string[] = [];
+    // Extract text from PDF files using OpenAI's file API or parse PDF
+    const pdfTexts: { bureau: string; text: string }[] = [];
+    
+    // Helper to extract text from PDF using a basic approach
+    const extractPdfText = async (file: File, bureauName: string): Promise<string> => {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      
+      // Basic PDF text extraction - look for text between stream/endstream or as plain text
+      let text = '';
+      const decoder = new TextDecoder('utf-8', { fatal: false });
+      const rawText = decoder.decode(bytes);
+      
+      // Extract readable text patterns from PDF
+      // Look for text objects (Tj, TJ, ') and string literals
+      const textPatterns = rawText.match(/\(([^)]+)\)|<([0-9A-Fa-f]+)>/g) || [];
+      const extractedParts: string[] = [];
+      
+      for (const pattern of textPatterns) {
+        if (pattern.startsWith('(') && pattern.endsWith(')')) {
+          const content = pattern.slice(1, -1)
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\\(/g, '(')
+            .replace(/\\\)/g, ')')
+            .replace(/\\\\/g, '\\');
+          if (content.length > 1 && /[a-zA-Z0-9]/.test(content)) {
+            extractedParts.push(content);
+          }
+        }
+      }
+      
+      text = extractedParts.join(' ');
+      
+      // Clean up the text
+      text = text
+        .replace(/\s+/g, ' ')
+        .replace(/[^\x20-\x7E\n]/g, ' ')
+        .trim();
+      
+      console.log(`${bureauName} PDF text extracted, length: ${text.length} chars`);
+      
+      // If extraction failed or got very little text, try base64 approach with description
+      if (text.length < 500) {
+        console.log(`${bureauName}: Limited text extracted, will send file metadata to AI`);
+        const base64Data = base64Encode(arrayBuffer);
+        return `[PDF FILE: ${bureauName} Credit Report - ${file.name}, Size: ${file.size} bytes, Base64 length: ${base64Data.length}]\n\nExtracted text (partial):\n${text}\n\n[Note: This is a PDF file. The full content may not be fully extractable. Please analyze based on available data.]`;
+      }
+      
+      return `=== ${bureauName} Credit Report ===\n\n${text}`;
+    };
     
     if (experianFile) {
-      const arrayBuffer = await experianFile.arrayBuffer();
-      const base64Data = base64Encode(arrayBuffer);
-      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
-      bureauNames.push('Experian');
+      const text = await extractPdfText(experianFile, 'Experian');
+      pdfTexts.push({ bureau: 'Experian', text });
       console.log(`Experian file processed, size: ${experianFile.size} bytes`);
     }
     
     if (equifaxFile) {
-      const arrayBuffer = await equifaxFile.arrayBuffer();
-      const base64Data = base64Encode(arrayBuffer);
-      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
-      bureauNames.push('Equifax');
+      const text = await extractPdfText(equifaxFile, 'Equifax');
+      pdfTexts.push({ bureau: 'Equifax', text });
       console.log(`Equifax file processed, size: ${equifaxFile.size} bytes`);
     }
     
     if (transunionFile) {
-      const arrayBuffer = await transunionFile.arrayBuffer();
-      const base64Data = base64Encode(arrayBuffer);
-      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
-      bureauNames.push('TransUnion');
+      const text = await extractPdfText(transunionFile, 'TransUnion');
+      pdfTexts.push({ bureau: 'TransUnion', text });
       console.log(`TransUnion file processed, size: ${transunionFile.size} bytes`);
     }
 
-    if (imageDataUrls.length === 0) {
+    if (pdfTexts.length === 0) {
       return new Response(
         JSON.stringify({ error: 'No credit report files provided', code: 400 }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files...');
+    const bureauNames = pdfTexts.map(p => p.bureau);
+    const combinedPdfText = pdfTexts.map(p => p.text).join('\n\n' + '='.repeat(50) + '\n\n');
+    
+    console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files, total text length:', combinedPdfText.length);
     
     // Streaming response
     const encoder = new TextEncoder();
@@ -633,8 +664,7 @@ serve(async (req) => {
           const step1Result = await callOpenAI(
             OPENAI_API_KEY,
             STEP1_EXTRACT_PROMPT,
-            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}. The PDFs are attached as images. Extract all tradelines, inquiries, and personal info mismatches.`,
-            imageDataUrls
+            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}.\n\nCREDIT REPORT TEXT DATA:\n\n${combinedPdfText}`
           );
 
           if (!step1Result.success) {
@@ -652,8 +682,7 @@ serve(async (req) => {
           const step2Result = await callOpenAI(
             OPENAI_API_KEY,
             STEP2_ANALYZE_PROMPT,
-            `Analyze the following extracted credit report data and calculate all metrics:\n\n${JSON.stringify(extractedData, null, 2)}`,
-            []
+            `Analyze the following extracted credit report data and calculate all metrics:\n\n${JSON.stringify(extractedData, null, 2)}`
           );
 
           if (!step2Result.success) {
@@ -673,8 +702,7 @@ serve(async (req) => {
           const step3Result = await callOpenAI(
             OPENAI_API_KEY,
             STEP3_FLAGS_PROMPT,
-            `Review this credit report data and analysis to identify FCRA/FDCPA issues and create a consumer action plan:\n\n${JSON.stringify(combinedData, null, 2)}`,
-            []
+            `Review this credit report data and analysis to identify FCRA/FDCPA issues and create a consumer action plan:\n\n${JSON.stringify(combinedData, null, 2)}`
           );
 
           if (!step3Result.success) {
@@ -698,8 +726,7 @@ serve(async (req) => {
           const step4Result = await callOpenAI(
             OPENAI_API_KEY,
             STEP4_FORMAT_PROMPT,
-            `Format the following analysis data into the final report template:\n\nStep1ExtractionJSON = ${JSON.stringify(extractedData, null, 2)}\n\nStep2AnalysisJSON = ${JSON.stringify(analysisData, null, 2)}\n\nStep3FlagsJSON = ${JSON.stringify(flagsData, null, 2)}`,
-            []
+            `Format the following analysis data into the final report template:\n\nStep1ExtractionJSON = ${JSON.stringify(extractedData, null, 2)}\n\nStep2AnalysisJSON = ${JSON.stringify(analysisData, null, 2)}\n\nStep3FlagsJSON = ${JSON.stringify(flagsData, null, 2)}`
           );
 
           if (!step4Result.success) {
