@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 // Allowed origins - add your production domain here
 const ALLOWED_ORIGINS = [
@@ -277,14 +276,150 @@ Return a JSON object with this structure:
   "summary": "2-3 sentence summary"
 }`;
 
-// Helper function to call OpenAI API
+// Helper function to upload PDF to OpenAI Files API
+async function uploadPdfToOpenAI(
+  apiKey: string,
+  file: File,
+  bureauName: string
+): Promise<{ success: boolean; fileId?: string; error?: string }> {
+  try {
+    console.log(`Uploading ${bureauName} PDF to OpenAI Files API...`);
+    
+    const formData = new FormData();
+    formData.append('purpose', 'user_data');
+    formData.append('file', file, file.name);
+    
+    const response = await fetch('https://api.openai.com/v1/files', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to upload ${bureauName} PDF:`, response.status, errorText);
+      return { success: false, error: `Upload failed: ${response.status} - ${errorText}` };
+    }
+    
+    const data = await response.json();
+    console.log(`${bureauName} PDF uploaded successfully, file_id: ${data.id}`);
+    return { success: true, fileId: data.id };
+  } catch (error) {
+    console.error(`Error uploading ${bureauName} PDF:`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Helper function to delete file from OpenAI
+async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
+  try {
+    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    console.log(`Deleted OpenAI file: ${fileId}`);
+  } catch (error) {
+    console.error(`Failed to delete file ${fileId}:`, error);
+  }
+}
+
+// Helper function to call OpenAI Responses API with PDF files
+async function callOpenAIWithPdfs(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+  fileIds: string[]
+): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
+  try {
+    // Build content array with files and text
+    const content: Array<{ type: string; file_id?: string; text?: string }> = [];
+    
+    // Add file references
+    for (const fileId of fileIds) {
+      content.push({
+        type: 'input_file',
+        file_id: fileId
+      });
+    }
+    
+    // Add text prompt
+    content.push({
+      type: 'input_text',
+      text: `${systemPrompt}\n\n${userPrompt}`
+    });
+    
+    console.log(`Calling OpenAI Responses API with ${fileIds.length} files...`);
+    
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        input: [
+          {
+            role: 'user',
+            content: content
+          }
+        ],
+        text: {
+          format: {
+            type: 'json_object'
+          }
+        }
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI Responses API error:', response.status, errorText);
+      return { success: false, error: `API error: ${response.status} - ${errorText}` };
+    }
+    
+    const data = await response.json();
+    console.log('OpenAI Responses API response received');
+    
+    // Extract text content from response
+    const outputText = data.output?.find((o: { type: string }) => o.type === 'message')?.content?.find((c: { type: string }) => c.type === 'output_text')?.text;
+    
+    if (!outputText) {
+      console.error('No text output in response:', JSON.stringify(data).substring(0, 500));
+      return { success: false, error: 'Empty response from AI' };
+    }
+    
+    console.log(`Response text length: ${outputText.length} chars`);
+    
+    // Parse JSON
+    try {
+      const parsed = JSON.parse(outputText);
+      return { success: true, data: parsed };
+    } catch (parseError) {
+      console.log('JSON parse failed, attempting repair...');
+      const repaired = repairJson(outputText);
+      if (repaired) {
+        console.log('JSON repair successful');
+        return { success: true, data: repaired };
+      }
+      return { success: false, error: 'Failed to parse response', rawResponse: outputText.substring(0, 1000) };
+    }
+  } catch (error) {
+    console.error('OpenAI Responses API call error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Helper function to call OpenAI Chat Completions API (for text-only requests)
 async function callOpenAI(
   apiKey: string, 
   systemPrompt: string, 
   userContent: string
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    console.log(`Calling OpenAI with prompt length: ${systemPrompt.length + userContent.length} chars`);
+    console.log(`Calling OpenAI Chat API with prompt length: ${systemPrompt.length + userContent.length} chars`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -312,7 +447,6 @@ async function callOpenAI(
 
     const data = await response.json();
     
-    // Check for finish reason
     const finishReason = data.choices?.[0]?.finish_reason;
     console.log(`OpenAI finish reason: ${finishReason}`);
     
@@ -329,15 +463,11 @@ async function callOpenAI(
 
     console.log(`Response length: ${content.length} chars`);
 
-    // Parse JSON with repair logic
     try {
       const parsed = JSON.parse(content);
       return { success: true, data: parsed };
     } catch (parseError) {
       console.log('JSON parse failed, attempting repair...');
-      console.log('First 500 chars:', content.substring(0, 500));
-      console.log('Last 500 chars:', content.substring(content.length - 500));
-      
       const repaired = repairJson(content);
       if (repaired) {
         console.log('JSON repair successful');
@@ -564,87 +694,49 @@ serve(async (req) => {
       }
     }
 
-    // Extract text from PDF files using OpenAI's file API or parse PDF
-    const pdfTexts: { bureau: string; text: string }[] = [];
-    
-    // Helper to extract text from PDF using a basic approach
-    const extractPdfText = async (file: File, bureauName: string): Promise<string> => {
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      
-      // Basic PDF text extraction - look for text between stream/endstream or as plain text
-      let text = '';
-      const decoder = new TextDecoder('utf-8', { fatal: false });
-      const rawText = decoder.decode(bytes);
-      
-      // Extract readable text patterns from PDF
-      // Look for text objects (Tj, TJ, ') and string literals
-      const textPatterns = rawText.match(/\(([^)]+)\)|<([0-9A-Fa-f]+)>/g) || [];
-      const extractedParts: string[] = [];
-      
-      for (const pattern of textPatterns) {
-        if (pattern.startsWith('(') && pattern.endsWith(')')) {
-          const content = pattern.slice(1, -1)
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\r')
-            .replace(/\\\(/g, '(')
-            .replace(/\\\)/g, ')')
-            .replace(/\\\\/g, '\\');
-          if (content.length > 1 && /[a-zA-Z0-9]/.test(content)) {
-            extractedParts.push(content);
-          }
-        }
-      }
-      
-      text = extractedParts.join(' ');
-      
-      // Clean up the text
-      text = text
-        .replace(/\s+/g, ' ')
-        .replace(/[^\x20-\x7E\n]/g, ' ')
-        .trim();
-      
-      console.log(`${bureauName} PDF text extracted, length: ${text.length} chars`);
-      
-      // If extraction failed or got very little text, try base64 approach with description
-      if (text.length < 500) {
-        console.log(`${bureauName}: Limited text extracted, will send file metadata to AI`);
-        const base64Data = base64Encode(arrayBuffer);
-        return `[PDF FILE: ${bureauName} Credit Report - ${file.name}, Size: ${file.size} bytes, Base64 length: ${base64Data.length}]\n\nExtracted text (partial):\n${text}\n\n[Note: This is a PDF file. The full content may not be fully extractable. Please analyze based on available data.]`;
-      }
-      
-      return `=== ${bureauName} Credit Report ===\n\n${text}`;
-    };
+    // Upload PDFs to OpenAI Files API
+    const uploadedFiles: { bureau: string; fileId: string; file: File }[] = [];
+    const bureauNames: string[] = [];
     
     if (experianFile) {
-      const text = await extractPdfText(experianFile, 'Experian');
-      pdfTexts.push({ bureau: 'Experian', text });
-      console.log(`Experian file processed, size: ${experianFile.size} bytes`);
+      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, experianFile, 'Experian');
+      if (result.success && result.fileId) {
+        uploadedFiles.push({ bureau: 'Experian', fileId: result.fileId, file: experianFile });
+        bureauNames.push('Experian');
+      } else {
+        console.error('Failed to upload Experian file:', result.error);
+      }
     }
     
     if (equifaxFile) {
-      const text = await extractPdfText(equifaxFile, 'Equifax');
-      pdfTexts.push({ bureau: 'Equifax', text });
-      console.log(`Equifax file processed, size: ${equifaxFile.size} bytes`);
+      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, equifaxFile, 'Equifax');
+      if (result.success && result.fileId) {
+        uploadedFiles.push({ bureau: 'Equifax', fileId: result.fileId, file: equifaxFile });
+        bureauNames.push('Equifax');
+      } else {
+        console.error('Failed to upload Equifax file:', result.error);
+      }
     }
     
     if (transunionFile) {
-      const text = await extractPdfText(transunionFile, 'TransUnion');
-      pdfTexts.push({ bureau: 'TransUnion', text });
-      console.log(`TransUnion file processed, size: ${transunionFile.size} bytes`);
+      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, transunionFile, 'TransUnion');
+      if (result.success && result.fileId) {
+        uploadedFiles.push({ bureau: 'TransUnion', fileId: result.fileId, file: transunionFile });
+        bureauNames.push('TransUnion');
+      } else {
+        console.error('Failed to upload TransUnion file:', result.error);
+      }
     }
 
-    if (pdfTexts.length === 0) {
+    if (uploadedFiles.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No credit report files provided', code: 400 }),
+        JSON.stringify({ error: 'Failed to upload credit report files. Please try again.', code: 400 }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const bureauNames = pdfTexts.map(p => p.bureau);
-    const combinedPdfText = pdfTexts.map(p => p.text).join('\n\n' + '='.repeat(50) + '\n\n');
-    
-    console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files, total text length:', combinedPdfText.length);
+    const fileIds = uploadedFiles.map(f => f.fileId);
+    console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files uploaded');
     
     // Streaming response
     const encoder = new TextEncoder();
@@ -656,19 +748,24 @@ serve(async (req) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress, message })}\n\n`));
           };
 
-          sendProgress(5, 'Uploading PDF files...');
+          sendProgress(5, 'PDF files uploaded to OpenAI...');
 
-          // ========== STEP 1: Extract Data ==========
+          // ========== STEP 1: Extract Data (with PDF files) ==========
           sendProgress(8, 'Step 1/4: Extracting data from credit reports...');
           
-          const step1Result = await callOpenAI(
+          const step1Result = await callOpenAIWithPdfs(
             OPENAI_API_KEY,
             STEP1_EXTRACT_PROMPT,
-            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}.\n\nCREDIT REPORT TEXT DATA:\n\n${combinedPdfText}`
+            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}. Extract all tradelines, inquiries, and personal info mismatches.`,
+            fileIds
           );
 
           if (!step1Result.success) {
             console.error('Step 1 failed:', step1Result.error);
+            // Cleanup uploaded files
+            for (const fileId of fileIds) {
+              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to extract data from reports. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -687,6 +784,10 @@ serve(async (req) => {
 
           if (!step2Result.success) {
             console.error('Step 2 failed:', step2Result.error);
+            // Cleanup uploaded files
+            for (const fileId of fileIds) {
+              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit health. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -707,6 +808,10 @@ serve(async (req) => {
 
           if (!step3Result.success) {
             console.error('Step 3 failed:', step3Result.error);
+            // Cleanup uploaded files
+            for (const fileId of fileIds) {
+              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to generate action plan. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -717,12 +822,6 @@ serve(async (req) => {
           sendProgress(68, 'Step 4/4: Formatting final report template...');
 
           // ========== STEP 4: Format Report Template ==========
-          const allData = {
-            step1Extraction: extractedData,
-            step2Analysis: analysisData,
-            step3Flags: flagsData
-          };
-          
           const step4Result = await callOpenAI(
             OPENAI_API_KEY,
             STEP4_FORMAT_PROMPT,
@@ -731,6 +830,10 @@ serve(async (req) => {
 
           if (!step4Result.success) {
             console.error('Step 4 failed:', step4Result.error);
+            // Cleanup uploaded files
+            for (const fileId of fileIds) {
+              await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to format final report. Please try again.' })}\n\n`));
             controller.close();
             return;
@@ -739,6 +842,11 @@ serve(async (req) => {
           console.log('Step 4 completed: Report formatted');
           const formattedReport = step4Result.data as Record<string, unknown>;
           sendProgress(92, 'Finalizing comprehensive credit audit report...');
+
+          // Cleanup uploaded files from OpenAI
+          for (const fileId of fileIds) {
+            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+          }
 
           // ========== Merge Results ==========
           const finalResult = {
@@ -757,6 +865,10 @@ serve(async (req) => {
           
         } catch (streamError) {
           console.error('Stream error:', streamError instanceof Error ? streamError.stack : streamError);
+          // Cleanup uploaded files on error
+          for (const fileId of fileIds) {
+            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+          }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'An error occurred. Please try again.' })}\n\n`));
           controller.close();
         }
