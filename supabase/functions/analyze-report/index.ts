@@ -201,6 +201,82 @@ The 6 categories to scan for:
 5) DEBT COLLECTION RED FLAGS - Missing original creditor, inconsistent amounts
 6) LEGAL DATE/OBSOLESCENCE - Old debts, possible re-aging`;
 
+// ============================================
+// STEP 4 PROMPT: Format Final Report Template
+// ============================================
+const STEP4_FORMAT_PROMPT = `You are a JSON formatter. Convert the provided Step 1 extraction + Step 2 analysis + Step 3 flags/action plan into the EXACT JSON schema below.
+
+CRITICAL RULES:
+- Output VALID JSON only. No markdown.
+- Be conservative: use "Potential issue" language everywhere.
+- Even if field names say "violations", NEVER assert a violation. Treat them as "potential issues".
+- Include "Evidence needed:" inside the issue text for every issue entry.
+- If data is missing, use null or 0 appropriately.
+- Keep strings short (max 50 chars when possible).
+- Max 3 score factors.
+- Max 10 accounts in accounts[] (prioritize derogatory).
+- Max 10 fcraViolations[] entries (highest impact first).
+- For estimatedCompensationPotential: ALWAYS set to "Not estimable from report".
+
+MAPPING GUIDANCE:
+- creditScore.current: use reportSummary score if present.
+- creditScore.range: map score to:
+  Poor <580, Fair 580-669, Good 670-739, Excellent >=740.
+- paymentHistory:
+  - totalAccounts = count(masterTradelineTable)
+  - latePayments = sum of tradelines with any 30/60/90 late indicator
+  - missedPayments = count of charge-off/collection/120+ if clearly shown
+  - onTimePayments = totalAccounts - latePayments - missedPayments (min 0)
+  - percentageOnTime = (onTimePayments / totalAccounts)*100, round 1
+- creditUtilization: use Step 2 if available; otherwise compute from revolving.
+- accounts[]: from masterTradelineTable, include name/type/balance/status.
+  potentialViolation must be "Potential issue: ... Evidence needed: ..."
+- fcraViolations[]: derive from Step 3 sixCategoryIssueFlags.
+  violationType = category name
+  severity = High/Medium/Low based on impact + confidence
+  legalBasis = short (e.g., "FCRA accuracy", "FDCPA conduct") but never definitive
+- recommendations[]: from consumerActionPlan, prioritized.
+- legalCaseSummary:
+  - totalViolationsFound = len(fcraViolations)
+  - highPriorityViolations = count severity=="High"
+  - estimatedCompensationPotential = "Not estimable from report"
+  - attorneyReferralRecommended = true only if High issues exist
+  - nextSteps = short summary of first 3 actions
+- summary: 2-3 sentences, conservative.
+
+Return a JSON object with this structure:
+{
+  "creditScore": {
+    "current": number or null,
+    "range": "Poor/Fair/Good/Excellent",
+    "factors": ["max 3 short factors"]
+  },
+  "paymentHistory": {
+    "onTimePayments": number,
+    "latePayments": number,
+    "missedPayments": number,
+    "totalAccounts": number,
+    "percentageOnTime": number
+  },
+  "creditUtilization": {
+    "totalCredit": number,
+    "usedCredit": number,
+    "utilizationPercentage": number,
+    "recommendation": "short recommendation"
+  },
+  "accounts": [{"name": "string", "type": "string", "balance": number, "status": "string", "potentialViolation": "string or null"}],
+  "fcraViolations": [{"violationType": "string", "severity": "High/Medium/Low", "accountName": "string", "issue": "short description", "legalBasis": "short basis"}],
+  "recommendations": [{"priority": "High/Medium/Low", "title": "string", "description": "short description"}],
+  "legalCaseSummary": {
+    "totalViolationsFound": number,
+    "highPriorityViolations": number,
+    "estimatedCompensationPotential": "string",
+    "attorneyReferralRecommended": boolean,
+    "nextSteps": "short next steps"
+  },
+  "summary": "2-3 sentence summary"
+}`;
+
 // Helper function to call OpenAI API
 async function callOpenAI(
   apiKey: string, 
@@ -552,7 +628,7 @@ serve(async (req) => {
           sendProgress(5, 'Uploading PDF files...');
 
           // ========== STEP 1: Extract Data ==========
-          sendProgress(10, 'Step 1/3: Extracting data from credit reports...');
+          sendProgress(8, 'Step 1/4: Extracting data from credit reports...');
           
           const step1Result = await callOpenAI(
             OPENAI_API_KEY,
@@ -570,7 +646,7 @@ serve(async (req) => {
 
           console.log('Step 1 completed: Data extracted');
           const extractedData = step1Result.data as Record<string, unknown>;
-          sendProgress(35, 'Step 2/3: Analyzing credit health metrics...');
+          sendProgress(28, 'Step 2/4: Analyzing credit health metrics...');
 
           // ========== STEP 2: Analyze Credit Health ==========
           const step2Result = await callOpenAI(
@@ -589,7 +665,7 @@ serve(async (req) => {
 
           console.log('Step 2 completed: Credit health analyzed');
           const analysisData = step2Result.data as Record<string, unknown>;
-          sendProgress(65, 'Step 3/3: Identifying issues and building action plan...');
+          sendProgress(48, 'Step 3/4: Identifying issues and building action plan...');
 
           // ========== STEP 3: Flag Issues & Action Plan ==========
           const combinedData = { ...extractedData, ...analysisData };
@@ -610,17 +686,43 @@ serve(async (req) => {
 
           console.log('Step 3 completed: Issues flagged and action plan created');
           const flagsData = step3Result.data as Record<string, unknown>;
-          sendProgress(90, 'Finalizing comprehensive credit audit report...');
+          sendProgress(68, 'Step 4/4: Formatting final report template...');
+
+          // ========== STEP 4: Format Report Template ==========
+          const allData = {
+            step1Extraction: extractedData,
+            step2Analysis: analysisData,
+            step3Flags: flagsData
+          };
+          
+          const step4Result = await callOpenAI(
+            OPENAI_API_KEY,
+            STEP4_FORMAT_PROMPT,
+            `Format the following analysis data into the final report template:\n\nStep1ExtractionJSON = ${JSON.stringify(extractedData, null, 2)}\n\nStep2AnalysisJSON = ${JSON.stringify(analysisData, null, 2)}\n\nStep3FlagsJSON = ${JSON.stringify(flagsData, null, 2)}`,
+            []
+          );
+
+          if (!step4Result.success) {
+            console.error('Step 4 failed:', step4Result.error);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to format final report. Please try again.' })}\n\n`));
+            controller.close();
+            return;
+          }
+
+          console.log('Step 4 completed: Report formatted');
+          const formattedReport = step4Result.data as Record<string, unknown>;
+          sendProgress(92, 'Finalizing comprehensive credit audit report...');
 
           // ========== Merge Results ==========
           const finalResult = {
             ...extractedData,
             ...analysisData,
-            ...flagsData
+            ...flagsData,
+            formattedReport
           };
 
-          console.log('All 3 steps completed successfully');
-          sendProgress(95, 'Report ready!');
+          console.log('All 4 steps completed successfully');
+          sendProgress(98, 'Report ready!');
           
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'completed', result: finalResult })}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
