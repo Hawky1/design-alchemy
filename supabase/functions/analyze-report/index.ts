@@ -201,55 +201,67 @@ The 6 categories to scan for:
 5) DEBT COLLECTION RED FLAGS - Missing original creditor, inconsistent amounts
 6) LEGAL DATE/OBSOLESCENCE - Old debts, possible re-aging`;
 
-// Helper function to call Gemini API
-async function callGemini(
+// Helper function to call OpenAI API
+async function callOpenAI(
   apiKey: string, 
   systemPrompt: string, 
   userContent: string, 
-  fileParts: Array<{ inline_data: { mime_type: string; data: string } } | { text: string }> = []
+  imageDataUrls: string[] = []
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    const parts = [
-      { text: systemPrompt },
-      { text: userContent },
-      ...fileParts
+    // Build message content array
+    const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+      { type: "text", text: userContent }
     ];
+    
+    // Add images if provided
+    for (const imageDataUrl of imageDataUrls) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: imageDataUrl }
+      });
+    }
 
-    console.log(`Calling Gemini with prompt length: ${systemPrompt.length + userContent.length} chars`);
+    console.log(`Calling OpenAI with prompt length: ${systemPrompt.length + userContent.length} chars, ${imageDataUrls.length} images`);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-          maxOutputTokens: 32768
-        }
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: contentParts }
+        ],
+        max_tokens: 16384,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
-      return { success: false, error: `API error: ${response.status}` };
+      console.error('OpenAI API error:', response.status, errorText);
+      return { success: false, error: `API error: ${response.status} - ${errorText}` };
     }
 
     const data = await response.json();
     
     // Check for finish reason
-    const finishReason = data.candidates?.[0]?.finishReason;
-    console.log(`Gemini finish reason: ${finishReason}`);
+    const finishReason = data.choices?.[0]?.finish_reason;
+    console.log(`OpenAI finish reason: ${finishReason}`);
     
-    if (finishReason === 'MAX_TOKENS') {
-      console.error('Response was truncated due to MAX_TOKENS');
+    if (finishReason === 'length') {
+      console.error('Response was truncated due to max_tokens');
     }
     
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const content = data.choices?.[0]?.message?.content;
     
     if (!content) {
-      console.error('No content in Gemini response:', JSON.stringify(data).substring(0, 500));
+      console.error('No content in OpenAI response:', JSON.stringify(data).substring(0, 500));
       return { success: false, error: 'Empty response from AI' };
     }
 
@@ -272,7 +284,7 @@ async function callGemini(
       return { success: false, error: 'Failed to parse response', rawResponse: content.substring(0, 1000) };
     }
   } catch (error) {
-    console.error('Gemini call error:', error);
+    console.error('OpenAI call error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -347,7 +359,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Analyze report function called - Multi-step analysis');
+    console.log('Analyze report function called - Multi-step analysis with OpenAI');
     
     // === INPUT VALIDATION: Check Content-Length header ===
     const contentLength = req.headers.get('content-length');
@@ -393,9 +405,9 @@ serve(async (req) => {
     
     console.log(`Client IP: ${clientIP}`);
     
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'Internal Server Error', code: 500 }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -490,15 +502,14 @@ serve(async (req) => {
       }
     }
 
-    // Convert PDF files to base64
-    const fileParts: Array<{ inline_data: { mime_type: string; data: string } } | { text: string }> = [];
+    // Convert PDF files to base64 data URLs for OpenAI vision
+    const imageDataUrls: string[] = [];
     const bureauNames: string[] = [];
     
     if (experianFile) {
       const arrayBuffer = await experianFile.arrayBuffer();
       const base64Data = base64Encode(arrayBuffer);
-      fileParts.push({ inline_data: { mime_type: "application/pdf", data: base64Data } });
-      fileParts.push({ text: "The above PDF is the EXPERIAN credit report." });
+      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
       bureauNames.push('Experian');
       console.log(`Experian file processed, size: ${experianFile.size} bytes`);
     }
@@ -506,8 +517,7 @@ serve(async (req) => {
     if (equifaxFile) {
       const arrayBuffer = await equifaxFile.arrayBuffer();
       const base64Data = base64Encode(arrayBuffer);
-      fileParts.push({ inline_data: { mime_type: "application/pdf", data: base64Data } });
-      fileParts.push({ text: "The above PDF is the EQUIFAX credit report." });
+      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
       bureauNames.push('Equifax');
       console.log(`Equifax file processed, size: ${equifaxFile.size} bytes`);
     }
@@ -515,20 +525,19 @@ serve(async (req) => {
     if (transunionFile) {
       const arrayBuffer = await transunionFile.arrayBuffer();
       const base64Data = base64Encode(arrayBuffer);
-      fileParts.push({ inline_data: { mime_type: "application/pdf", data: base64Data } });
-      fileParts.push({ text: "The above PDF is the TRANSUNION credit report." });
+      imageDataUrls.push(`data:application/pdf;base64,${base64Data}`);
       bureauNames.push('TransUnion');
       console.log(`TransUnion file processed, size: ${transunionFile.size} bytes`);
     }
 
-    if (fileParts.length === 0) {
+    if (imageDataUrls.length === 0) {
       return new Response(
         JSON.stringify({ error: 'No credit report files provided', code: 400 }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Starting multi-step analysis with', bureauNames.length, 'PDF files...');
+    console.log('Starting multi-step analysis with OpenAI,', bureauNames.length, 'PDF files...');
     
     // Streaming response
     const encoder = new TextEncoder();
@@ -545,11 +554,11 @@ serve(async (req) => {
           // ========== STEP 1: Extract Data ==========
           sendProgress(10, 'Step 1/3: Extracting data from credit reports...');
           
-          const step1Result = await callGemini(
-            GEMINI_API_KEY,
+          const step1Result = await callOpenAI(
+            OPENAI_API_KEY,
             STEP1_EXTRACT_PROMPT,
-            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}. Extract all tradelines, inquiries, and personal info mismatches.`,
-            fileParts
+            `Analyze the following ${bureauNames.length} credit report(s) from: ${bureauNames.join(', ')}. The PDFs are attached as images. Extract all tradelines, inquiries, and personal info mismatches.`,
+            imageDataUrls
           );
 
           if (!step1Result.success) {
@@ -564,8 +573,8 @@ serve(async (req) => {
           sendProgress(35, 'Step 2/3: Analyzing credit health metrics...');
 
           // ========== STEP 2: Analyze Credit Health ==========
-          const step2Result = await callGemini(
-            GEMINI_API_KEY,
+          const step2Result = await callOpenAI(
+            OPENAI_API_KEY,
             STEP2_ANALYZE_PROMPT,
             `Analyze the following extracted credit report data and calculate all metrics:\n\n${JSON.stringify(extractedData, null, 2)}`,
             []
@@ -585,8 +594,8 @@ serve(async (req) => {
           // ========== STEP 3: Flag Issues & Action Plan ==========
           const combinedData = { ...extractedData, ...analysisData };
           
-          const step3Result = await callGemini(
-            GEMINI_API_KEY,
+          const step3Result = await callOpenAI(
+            OPENAI_API_KEY,
             STEP3_FLAGS_PROMPT,
             `Review this credit report data and analysis to identify FCRA/FDCPA issues and create a consumer action plan:\n\n${JSON.stringify(combinedData, null, 2)}`,
             []
