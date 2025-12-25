@@ -22,61 +22,104 @@ const looseStringArr = z.union([z.array(z.string()), z.string(), z.null(), z.und
     return [String(val)];
   });
 
-// ====== STEP 1: Per-Bureau Tradeline Schema ======
-const perBureauTradelineSchema = z.object({
-  furnisher: looseString.optional(),
-  accountType: looseString.optional(), // revolving/installment/mortgage/student/collection/other
-  status: looseString.optional(), // open/closed/collection/charged-off/paid/settled/in bankruptcy
-  openDate: looseString.optional(),
-  lastReportedDate: looseString.optional(),
-  creditLimit: looseString.optional(),
-  highBalance: looseString.optional(),
-  currentBalance: looseString.optional(),
-  pastDueAmount: looseString.optional(),
-  monthlyPayment: looseString.optional(),
-  paymentHistory: looseString.optional(),
-  remarks: looseString.optional(),
-  accountNumberLast4: looseString.optional(),
-  originalCreditor: looseString.optional(),
-  dateOfFirstDelinquency: looseString.optional(),
+// ====== NEW SCHEMA: Report Summary ======
+const reportSummarySchema = z.object({
+  bureau: looseString.optional(),
+  reportDate: looseString.optional(),
+  score: looseNumber.optional(),
+  scoreModel: looseString.optional(),
+  derogatoryAccountsCount: looseNumber.optional(),
+  totalAccountsCount: looseNumber.optional(),
+  // Legacy fields for backwards compatibility
+  consumerName: looseString.optional(),
+  totalAccountsAnalyzed: looseNumber.optional(),
+  fileSource: looseString.optional(),
+  consumerState: looseString.optional(),
+  bureausAnalyzed: looseStringArr.optional(),
 });
 
-// ====== STEP 2: Master Grouped Tradeline Schema ======
+// ====== NEW SCHEMA: Personal Info Mismatches ======
+const personalInfoMismatchSchema = z.object({
+  field: looseString.optional(),
+  valuesFound: looseStringArr.optional(),
+  note: looseString.optional(),
+  // Legacy fields
+  type: looseString.optional(),
+  equifaxValue: looseString.optional(),
+  experianValue: looseString.optional(),
+  transunionValue: looseString.optional(),
+  concern: looseString.optional(),
+});
+
+// ====== NEW SCHEMA: Inquiries ======
+const inquirySchema = z.object({
+  date: looseString.optional(),
+  creditor: looseString.optional(),
+  type: looseString.optional(), // "hard"|"soft"
+  // Legacy
+  requesterName: looseString.optional(),
+  bureau: looseString.optional(),
+});
+
+// ====== NEW SCHEMA: Public Records ======
+const publicRecordSchema = z.object({
+  type: looseString.optional(),
+  dateFiled: looseString.optional(),
+  status: looseString.optional(),
+  amount: looseNumber.optional(),
+  court: looseString.optional(),
+});
+
+// ====== NEW SCHEMA: Master Tradeline Table ======
 const masterTradelineSchema = z.object({
+  accountId: looseString.optional(),
+  creditorName: looseString.optional(),
+  accountType: looseString.optional(),
+  accountNumberLast4: looseString.optional(),
+  bureau: looseString.optional(),
+  openDate: looseString.optional(),
+  status: looseString.optional(),
+  statusLineRaw: looseString.optional(),
+  currentBalance: looseNumber.optional(),
+  creditLimit: looseNumber.optional(),
+  highCredit: looseNumber.optional(),
+  pastDue: looseNumber.optional(),
+  paymentStatus: looseString.optional(),
+  remarks: looseString.optional(),
+  isDerogatory: z.boolean().optional(),
+  // Legacy fields
   groupId: looseString.optional(),
   furnisherName: looseString.optional(),
-  accountType: looseString.optional(),
-  openDate: looseString.optional(),
-  accountNumberLast4: looseString.optional(),
   originalAmount: looseString.optional(),
-  remarks: looseString.optional(),
   perBureauData: z.object({
-    equifax: perBureauTradelineSchema.optional(),
-    experian: perBureauTradelineSchema.optional(),
-    transunion: perBureauTradelineSchema.optional(),
+    equifax: z.any().optional(),
+    experian: z.any().optional(),
+    transunion: z.any().optional(),
   }).optional(),
   discrepanciesNoted: looseStringArr.optional(),
 });
 
-// ====== STEP 3: Credit Utilization Schema ======
-const utilizationAccountSchema = z.object({
-  accountName: looseString.optional(),
-  balance: looseNumber.optional(),
-  limit: looseNumber.optional(),
-  utilization: looseNumber.optional(),
-  utilizationPercent: looseString.optional(),
-  flagged: z.boolean().optional(),
-  flagReason: looseString.optional(), // >30%, >50%, >90%
-  limitMissing: z.boolean().optional(),
-});
-
-const creditUtilizationSchema = z.object({
+// ====== NEW SCHEMA: Credit Metrics ======
+const creditUtilizationMetricsSchema = z.object({
   totalRevolvingBalance: looseNumber.optional(),
   totalRevolvingLimit: looseNumber.optional(),
+  utilizationPct: looseNumber.optional(),
+  utilizationCalc: looseString.optional(),
+  notes: looseString.optional(),
+  // Legacy fields
   totalUtilization: looseNumber.optional(),
   totalUtilizationPercent: looseString.optional(),
   calculationShown: looseString.optional(),
-  perCardUtilization: z.array(utilizationAccountSchema).optional(),
+  perCardUtilization: z.array(z.object({
+    accountName: looseString.optional(),
+    balance: looseNumber.optional(),
+    limit: looseNumber.optional(),
+    utilization: looseNumber.optional(),
+    utilizationPercent: looseString.optional(),
+    flagged: z.boolean().optional(),
+    flagReason: looseString.optional(),
+    limitMissing: z.boolean().optional(),
+  })).optional(),
   accountsMissingLimit: looseStringArr.optional(),
   flaggedThresholds: z.object({
     above30Percent: looseStringArr.optional(),
@@ -86,8 +129,13 @@ const creditUtilizationSchema = z.object({
   paydownOrder: looseStringArr.optional(),
 });
 
-// ====== STEP 4: Age of Credit Schema ======
-const ageOfCreditSchema = z.object({
+const ageOfCreditMetricsSchema = z.object({
+  oldestAccountDate: looseString.optional(),
+  newestAccountDate: looseString.optional(),
+  averageAgeMonths: looseNumber.optional(),
+  ageCalc: looseString.optional(),
+  notes: looseString.optional(),
+  // Legacy fields
   oldestAccountAge: looseString.optional(),
   oldestAccountName: looseString.optional(),
   newestAccountAge: looseString.optional(),
@@ -99,8 +147,14 @@ const ageOfCreditSchema = z.object({
   accountsWithOpenDates: looseNumber.optional(),
 });
 
-// ====== STEP 5: Credit Mix Schema ======
-const creditMixSchema = z.object({
+const creditMixMetricsSchema = z.object({
+  revolvingCount: looseNumber.optional(),
+  installmentCount: looseNumber.optional(),
+  mortgageCount: looseNumber.optional(),
+  studentLoanCount: looseNumber.optional(),
+  otherCount: looseNumber.optional(),
+  notes: looseString.optional(),
+  // Legacy fields
   revolving: z.object({
     openCount: looseNumber.optional(),
     closedCount: looseNumber.optional(),
@@ -131,8 +185,11 @@ const creditMixSchema = z.object({
   mixWeaknesses: looseStringArr.optional(),
 });
 
-// ====== STEP 6: Credit Health Diagnosis Schema ======
 const creditHealthDiagnosisSchema = z.object({
+  summary: looseString.optional(),
+  topRiskFactors: looseStringArr.optional(),
+  quickWins: looseStringArr.optional(),
+  // Legacy fields
   likelyTopSuppressors: looseStringArr.optional(),
   highUtilizationIssues: looseStringArr.optional(),
   derogatoryIssues: looseStringArr.optional(),
@@ -141,14 +198,117 @@ const creditHealthDiagnosisSchema = z.object({
   collectionInconsistencies: looseStringArr.optional(),
 });
 
-// ====== STEP 7: 6-Category Issue Flags Schema ======
+const creditMetricsSchema = z.object({
+  creditUtilization: creditUtilizationMetricsSchema.optional(),
+  ageOfCredit: ageOfCreditMetricsSchema.optional(),
+  creditMix: creditMixMetricsSchema.optional(),
+  creditHealthDiagnosis: creditHealthDiagnosisSchema.optional(),
+});
+
+// ====== NEW SCHEMA: Consumer Law Review ======
+const potentialIssueSchema = z.object({
+  issueId: looseString.optional(),
+  category: looseString.optional(),
+  severity: looseString.optional(), // "low"|"medium"|"high"
+  accountId: looseString.optional(),
+  whatWeSee: looseString.optional(),
+  whyItMayBeAProblem: looseString.optional(),
+  evidenceFromReport: looseStringArr.optional(),
+  evidenceNeeded: looseStringArr.optional(),
+  recommendedDisputePoints: looseStringArr.optional(),
+  recommendedNextSteps: looseStringArr.optional(),
+});
+
+const categoriesSummarySchema = z.object({
+  "Duplicate Reporting": looseNumber.optional(),
+  "Identity Theft": looseNumber.optional(),
+  "Wrong Balance/Status": looseNumber.optional(),
+  "Post-Bankruptcy": looseNumber.optional(),
+  "Debt Collection Red Flags": looseNumber.optional(),
+  "Legal Date/Obsolescence": looseNumber.optional(),
+  "Other": looseNumber.optional(),
+});
+
+const actionPlanStepSchema = z.object({
+  step: looseNumber.optional(),
+  action: looseString.optional(),
+  why: looseString.optional(),
+  inputsNeeded: looseStringArr.optional(),
+});
+
+const consumerLawReviewSchema = z.object({
+  potentialIssues: z.array(potentialIssueSchema).optional(),
+  categoriesSummary: categoriesSummarySchema.optional(),
+  actionPlan: z.array(actionPlanStepSchema).optional(),
+});
+
+// ====== NEW SCHEMA: Final Report ======
+const writeOffCheckSchema = z.object({
+  writeOffAmountFound: looseNumber.optional(),
+  writeOffEvidenceText: looseString.optional(),
+  balanceVsWriteOffFinding: looseString.optional(),
+});
+
+const balanceHistoryItemSchema = z.object({
+  month: looseString.optional(),
+  balance: looseNumber.optional(),
+});
+
+const balanceHistoryCheckSchema = z.object({
+  history: z.array(balanceHistoryItemSchema).optional(),
+  finding: looseString.optional(),
+  calc: looseString.optional(),
+});
+
+const finalReportAccountSchema = z.object({
+  accountId: looseString.optional(),
+  name: looseString.optional(),
+  type: looseString.optional(),
+  balance: looseNumber.optional(),
+  status: looseString.optional(),
+  accountNumberLast4: looseString.optional(),
+  potentialViolation: looseString.optional(),
+  writeOffCheck: writeOffCheckSchema.optional(),
+  balanceHistoryCheck: balanceHistoryCheckSchema.optional(),
+});
+
+const finalReportFcraViolationSchema = z.object({
+  issueId: looseString.optional(),
+  accountId: looseString.optional(),
+  category: looseString.optional(),
+  summary: looseString.optional(),
+  evidenceNeeded: looseStringArr.optional(),
+});
+
+const disputeLetterSchema = z.object({
+  accountId: looseString.optional(),
+  creditorOrCollector: looseString.optional(),
+  accountNumberLast4: looseString.optional(),
+  letterType: looseString.optional(), // "CRA"|"Furnisher/Collector"
+  subject: looseString.optional(),
+  body: looseString.optional(),
+  // Legacy fields
+  targetBureau: looseString.optional(),
+  accountsToDispute: looseStringArr.optional(),
+  legalCitations: looseStringArr.optional(),
+  keyPoints: looseStringArr.optional(),
+  fullText: looseString.optional(),
+});
+
+const finalReportSchema = z.object({
+  accounts: z.array(finalReportAccountSchema).optional(),
+  fcraViolations: z.array(finalReportFcraViolationSchema).optional(),
+  disputeLetters: z.array(disputeLetterSchema).optional(),
+});
+
+// ====== Legacy Schemas for backwards compatibility ======
 const issueFlagSchema = z.object({
-  category: looseNumber.optional(), // 1-6
+  category: looseNumber.optional(),
   flagTypeName: looseString.optional(),
-  accountsInvolved: looseString.optional(), // furnisher + last4
-  whyFlagged: looseString.optional(), // ≤25 words from report
-  evidenceNeeded: looseString.optional(), // what would confirm/refute
-  priority: looseString.optional(), // High/Med/Low
+  accountsInvolved: looseString.optional(),
+  whyFlagged: looseString.optional(),
+  evidenceNeeded: looseString.optional(),
+  priority: looseString.optional(),
 });
 
 const sixCategoryIssueFlagsSchema = z.object({
@@ -160,7 +320,6 @@ const sixCategoryIssueFlagsSchema = z.object({
   category6_legalDateObsolescence: z.array(issueFlagSchema).optional(),
 });
 
-// ====== STEP 8: Consumer Action Plan Schema ======
 const actionItemSchema = z.object({
   action: looseString.optional(),
   priority: looseString.optional(),
@@ -180,35 +339,15 @@ const consumerActionPlanSchema = z.object({
   questionsToAskConsumer: looseStringArr.optional(),
 });
 
-// ====== Personal Info Mismatches ======
-const personalInfoMismatchSchema = z.object({
-  type: looseString.optional(), // names/addresses/employers
-  equifaxValue: looseString.optional(),
-  experianValue: looseString.optional(),
-  transunionValue: looseString.optional(),
-  concern: looseString.optional(),
-});
-
-// ====== Inquiry Schema ======
-const inquirySchema = z.object({
-  date: looseString.optional(),
-  requesterName: looseString.optional(),
-  type: looseString.optional(), // hard/soft
-  bureau: looseString.optional(),
-});
-
-// ====== Executive Summary Item ======
 const executiveSummaryItemSchema = z.object({
   bullet: looseString.optional(),
 });
 
-// ====== Not Detectable From Report ======
 const notDetectableSchema = z.object({
   item: looseString.optional(),
   explanation: looseString.optional(),
 });
 
-// Legacy schemas for backwards compatibility
 const fcraViolationSchema = z.object({
   violationTitle: looseString.optional(),
   severity: looseString.optional(),
@@ -233,79 +372,66 @@ const fdcpaViolationSchema = z.object({
   estimatedDamages: looseString.optional(),
 });
 
-const debtBuyerIssueSchema = z.object({
-  issueTitle: looseString.optional(),
-  severity: looseString.optional(),
-  accountName: looseString.optional(),
-  issueType: looseString.optional(),
-  explanation: looseString.optional(),
-  requiredDocumentation: looseStringArr.optional(),
-  suggestedAction: looseString.optional(),
-});
-
-const disputeLetterSchema = z.object({
-  targetBureau: looseString.optional(),
-  letterType: looseString.optional(),
-  accountsToDispute: looseStringArr.optional(),
-  legalCitations: looseStringArr.optional(),
-  keyPoints: looseStringArr.optional(),
-  fullText: looseString.optional(),
-});
-
-const stateLawAnalysisSchema = z.object({
-  state: looseString.optional(),
-  lawName: looseString.optional(),
-  statuteCode: looseString.optional(),
-  additionalProtections: looseStringArr.optional(),
-  applicableViolations: looseStringArr.optional(),
-});
-
 // ====== Main Analysis Result Schema ======
 export const analysisResultSchema = z.object({
-  // Executive Summary (10 bullets)
-  executiveSummary: z.array(executiveSummaryItemSchema).optional(),
+  // NEW SCHEMA: Report Summary
+  reportSummary: reportSummarySchema.optional(),
 
-  // Report Summary (legacy + new)
-  reportSummary: z.object({
-    reportDate: looseString.optional(),
-    consumerName: looseString.optional(),
-    totalAccountsAnalyzed: looseNumber.optional(),
-    fileSource: looseString.optional(),
-    consumerState: looseString.optional(),
-    bureausAnalyzed: looseStringArr.optional(),
-  }).optional(),
-
-  // Personal Info Mismatches
+  // NEW SCHEMA: Personal Info Mismatches
   personalInfoMismatches: z.array(personalInfoMismatchSchema).optional(),
 
-  // Inquiries
+  // NEW SCHEMA: Inquiries
   inquiries: z.array(inquirySchema).optional(),
 
-  // Master Grouped Tradelines Table
+  // NEW SCHEMA: Public Records
+  publicRecords: z.array(publicRecordSchema).optional(),
+
+  // NEW SCHEMA: Master Tradeline Table
   masterTradelineTable: z.array(masterTradelineSchema).optional(),
 
-  // Credit Utilization (Step 3)
-  creditUtilization: creditUtilizationSchema.optional(),
+  // NEW SCHEMA: Credit Metrics (nested structure)
+  creditMetrics: creditMetricsSchema.optional(),
 
-  // Age of Credit (Step 4)
-  ageOfCredit: ageOfCreditSchema.optional(),
+  // NEW SCHEMA: Consumer Law Review
+  consumerLawReview: consumerLawReviewSchema.optional(),
 
-  // Credit Mix (Step 5)
-  creditMix: creditMixSchema.optional(),
+  // NEW SCHEMA: Final Report
+  finalReport: finalReportSchema.optional(),
 
-  // Credit Health Diagnosis (Step 6)
+  // Top-level accounts array (for easy access)
+  accounts: z.array(finalReportAccountSchema).optional(),
+
+  // Top-level fcraViolations (for easy access)
+  fcraViolations: z.array(finalReportFcraViolationSchema).or(z.array(fcraViolationSchema)).optional(),
+
+  // Top-level disputeLetters (for easy access)
+  disputeLetters: z.array(disputeLetterSchema).optional(),
+
+  // Legacy: Credit Utilization (flat)
+  creditUtilization: creditUtilizationMetricsSchema.optional(),
+
+  // Legacy: Age of Credit (flat)
+  ageOfCredit: ageOfCreditMetricsSchema.optional(),
+
+  // Legacy: Credit Mix (flat)
+  creditMix: creditMixMetricsSchema.optional(),
+
+  // Legacy: Credit Health Diagnosis (flat)
   creditHealthDiagnosis: creditHealthDiagnosisSchema.optional(),
 
-  // 6-Category Issue Flags (Step 7)
+  // Legacy: Executive Summary
+  executiveSummary: z.array(executiveSummaryItemSchema).optional(),
+
+  // Legacy: 6-Category Issue Flags
   sixCategoryIssueFlags: sixCategoryIssueFlagsSchema.optional(),
 
-  // Consumer Action Plan (Step 8)
+  // Legacy: Consumer Action Plan
   consumerActionPlan: consumerActionPlanSchema.optional(),
 
-  // Not Detectable From Credit Report
+  // Legacy: Not Detectable From Report
   notDetectableFromReport: z.array(notDetectableSchema).optional(),
 
-  // Legacy Account Analysis (backwards compatibility)
+  // Legacy: Account Analysis
   accountAnalysis: z.array(z.object({
     accountName: looseString.optional(),
     accountNumber: looseString.optional(),
@@ -319,75 +445,8 @@ export const analysisResultSchema = z.object({
     hasViolations: z.boolean().optional(),
   })).optional(),
 
-  // Legacy: FCRA Violations
-  fcraViolations: z.array(fcraViolationSchema).optional(),
-
   // Legacy: FDCPA Violations
   fdcpaViolations: z.array(fdcpaViolationSchema).optional(),
-
-  // Legacy: Debt Buyer Issues
-  debtBuyerIssues: z.array(debtBuyerIssueSchema).optional(),
-
-  // Legacy: Priority Violations
-  priorityViolations: z.object({
-    duplicateAccounts: z.array(z.object({
-      originalCreditor: looseString.optional(),
-      collectionAgency: looseString.optional(),
-      accountNumber: looseString.optional(),
-      originalBalance: looseString.optional(),
-      collectionBalance: looseString.optional(),
-      explanation: looseString.optional(),
-    })).optional(),
-    identityTheftAccounts: z.array(z.object({
-      accountName: looseString.optional(),
-      accountNumber: looseString.optional(),
-      reason: looseString.optional(),
-      dateOpened: looseString.optional(),
-    })).optional(),
-    wrongBalanceAccounts: z.array(z.object({
-      accountName: looseString.optional(),
-      reportedBalance: looseString.optional(),
-      shouldBe: looseString.optional(),
-      status: looseString.optional(),
-      explanation: looseString.optional(),
-    })).optional(),
-    postBankruptcyViolations: z.array(z.object({
-      accountName: looseString.optional(),
-      reportedBalance: looseString.optional(),
-      reportedPayment: looseString.optional(),
-      reportedPastDue: looseString.optional(),
-      bankruptcyDischargeDate: looseString.optional(),
-      explanation: looseString.optional(),
-    })).optional(),
-    cancelledDebt1099C: z.array(z.object({
-      accountName: looseString.optional(),
-      reportedBalance: looseString.optional(),
-      chargeOffDate: looseString.optional(),
-      explanation: looseString.optional(),
-    })).optional(),
-    tcpaViolations: z.array(z.object({
-      collectorName: looseString.optional(),
-      violationType: looseString.optional(),
-      evidence: looseString.optional(),
-      estimatedCalls: looseNumber.optional(),
-    })).optional(),
-  }).optional(),
-
-  // Legacy: Suggested Dispute Letters
-  suggestedDisputeLetters: z.array(disputeLetterSchema).optional(),
-
-  // Legacy: State Law Analysis
-  stateLawAnalysis: stateLawAnalysisSchema.optional(),
-
-  // Legacy: Statute of Limitations Analysis
-  statuteOfLimitationsAnalysis: z.object({
-    state: looseString.optional(),
-    creditCardSOL: looseString.optional(),
-    writtenContractSOL: looseString.optional(),
-    accountsNearingSOL: looseStringArr.optional(),
-    accountsPastSOL: looseStringArr.optional(),
-    warnings: looseStringArr.optional(),
-  }).optional(),
 
   // Legal Summary
   legalSummary: z.object({

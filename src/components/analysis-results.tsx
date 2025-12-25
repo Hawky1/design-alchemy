@@ -360,28 +360,55 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             <div className="grid md:grid-cols-4 gap-4">
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-500 mb-1">Consumer</p>
-                <p className="text-lg font-semibold text-gray-900">{results.reportSummary.consumerName ?? 'Redacted'}</p>
+                <p className="text-lg font-semibold text-gray-900">{lead?.name || results.reportSummary.consumerName || 'Redacted'}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-500 mb-1">Report Date</p>
-                <p className="text-lg font-semibold text-gray-900">{results.reportSummary.reportDate ?? 'Not shown'}</p>
+                <p className="text-lg font-semibold text-gray-900">{results.reportSummary.reportDate || 'Not shown'}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-500 mb-1">Accounts Analyzed</p>
-                <p className="text-lg font-semibold text-gray-900">{results.reportSummary.totalAccountsAnalyzed ?? 0}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {results.reportSummary.totalAccountsCount ?? results.reportSummary.totalAccountsAnalyzed ?? results?.masterTradelineTable?.length ?? 0}
+                </p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-500 mb-1">Bureaus</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {results.reportSummary.bureausAnalyzed?.join(', ') ?? results.reportSummary.fileSource ?? 'Unknown'}
+                  {results.reportSummary.bureau || results.reportSummary.bureausAnalyzed?.join(', ') || results.reportSummary.fileSource || 'Multi-Bureau'}
                 </p>
               </div>
             </div>
+            {/* Credit Score if available */}
+            {results.reportSummary.score && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-600 mb-1">Credit Score</p>
+                    <p className="text-2xl font-bold text-blue-800">{results.reportSummary.score}</p>
+                  </div>
+                  {results.reportSummary.scoreModel && (
+                    <p className="text-sm text-blue-600">{results.reportSummary.scoreModel}</p>
+                  )}
+                  {results.reportSummary.derogatoryAccountsCount != null && results.reportSummary.derogatoryAccountsCount > 0 && (
+                    <div className="text-right">
+                      <p className="text-sm text-red-600">Derogatory Accounts</p>
+                      <p className="text-xl font-bold text-red-700">{results.reportSummary.derogatoryAccountsCount}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Credit Utilization */}
-        {results?.creditUtilization && (
+        {(() => {
+          const util = results?.creditUtilization || results?.creditMetrics?.creditUtilization;
+          if (!util) return null;
+          const utilizationPct = util.utilizationPct ?? util.totalUtilization ?? 0;
+          const utilizationCalc = util.utilizationCalc ?? util.calculationShown;
+          return (
           <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-6 mb-6">
             <SectionHeader 
               icon={TrendingUp} 
@@ -398,40 +425,45 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                     <div className="text-center">
                       <p className="text-sm text-emerald-700 mb-1">Total Revolving Utilization</p>
                       <p className={`text-4xl font-bold ${
-                        (results.creditUtilization.totalUtilization ?? 0) > 50 ? 'text-red-600' :
-                        (results.creditUtilization.totalUtilization ?? 0) > 30 ? 'text-yellow-600' : 'text-emerald-600'
+                        utilizationPct > 50 ? 'text-red-600' :
+                        utilizationPct > 30 ? 'text-yellow-600' : 'text-emerald-600'
                       }`}>
-                        {results.creditUtilization.totalUtilizationPercent ?? `${results.creditUtilization.totalUtilization ?? 0}%`}
+                        {util.totalUtilizationPercent ?? `${utilizationPct}%`}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-emerald-700 mb-1">Total Balance</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        ${(results.creditUtilization.totalRevolvingBalance ?? 0).toLocaleString()}
+                        ${(util.totalRevolvingBalance ?? 0).toLocaleString()}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-emerald-700 mb-1">Total Limit</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        ${(results.creditUtilization.totalRevolvingLimit ?? 0).toLocaleString()}
+                        ${(util.totalRevolvingLimit ?? 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
-                  {results.creditUtilization.calculationShown && (
+                  {utilizationCalc && (
                     <div className="mt-4 text-center">
                       <p className="text-sm text-emerald-800 font-mono bg-white/70 inline-block px-4 py-2 rounded border border-emerald-200">
-                        Calculation: {results.creditUtilization.calculationShown}
+                        Calculation: {utilizationCalc}
                       </p>
+                    </div>
+                  )}
+                  {util.notes && (
+                    <div className="mt-2 text-center">
+                      <p className="text-sm text-gray-600">{util.notes}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Per-Card Utilization */}
-                {results.creditUtilization.perCardUtilization && results.creditUtilization.perCardUtilization.length > 0 && (
+                {util.perCardUtilization && util.perCardUtilization.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-700 mb-3">Per-Card Utilization (Ranked Highest to Lowest)</h3>
                     <div className="space-y-2">
-                      {results.creditUtilization.perCardUtilization.map((card, idx) => (
+                      {util.perCardUtilization.map((card, idx) => (
                         <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${
                           card.flagged ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
                         }`}>
@@ -464,29 +496,29 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                 )}
 
                 {/* Flagged Thresholds */}
-                {results.creditUtilization.flaggedThresholds && (
+                {util.flaggedThresholds && (
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    {(results.creditUtilization.flaggedThresholds.above90Percent?.length ?? 0) > 0 && (
+                    {(util.flaggedThresholds.above90Percent?.length ?? 0) > 0 && (
                       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                         <p className="text-sm font-semibold text-red-700 mb-2">Above 90%</p>
                         <p className="text-sm text-red-600">
-                          {results.creditUtilization.flaggedThresholds.above90Percent?.join(', ')}
+                          {util.flaggedThresholds.above90Percent?.join(', ')}
                         </p>
                       </div>
                     )}
-                    {(results.creditUtilization.flaggedThresholds.above50Percent?.length ?? 0) > 0 && (
+                    {(util.flaggedThresholds.above50Percent?.length ?? 0) > 0 && (
                       <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
                         <p className="text-sm font-semibold text-orange-700 mb-2">Above 50%</p>
                         <p className="text-sm text-orange-600">
-                          {results.creditUtilization.flaggedThresholds.above50Percent?.join(', ')}
+                          {util.flaggedThresholds.above50Percent?.join(', ')}
                         </p>
                       </div>
                     )}
-                    {(results.creditUtilization.flaggedThresholds.above30Percent?.length ?? 0) > 0 && (
+                    {(util.flaggedThresholds.above30Percent?.length ?? 0) > 0 && (
                       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p className="text-sm font-semibold text-yellow-700 mb-2">Above 30%</p>
                         <p className="text-sm text-yellow-600">
-                          {results.creditUtilization.flaggedThresholds.above30Percent?.join(', ')}
+                          {util.flaggedThresholds.above30Percent?.join(', ')}
                         </p>
                       </div>
                     )}
@@ -494,22 +526,22 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                 )}
 
                 {/* Missing Limits */}
-                {results.creditUtilization.accountsMissingLimit && results.creditUtilization.accountsMissingLimit.length > 0 && (
+                {util.accountsMissingLimit && util.accountsMissingLimit.length > 0 && (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <p className="text-sm text-gray-600 mb-2">
                       <AlertCircle className="w-4 h-4 inline mr-1" />
                       Accounts excluded from calculation (missing credit limit):
                     </p>
-                    <p className="text-sm text-gray-700">{results.creditUtilization.accountsMissingLimit.join(', ')}</p>
+                    <p className="text-sm text-gray-700">{util.accountsMissingLimit.join(', ')}</p>
                   </div>
                 )}
 
                 {/* Paydown Order */}
-                {results.creditUtilization.paydownOrder && results.creditUtilization.paydownOrder.length > 0 && (
+                {util.paydownOrder && util.paydownOrder.length > 0 && (
                   <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
                     <p className="text-sm font-semibold text-emerald-700 mb-2">Recommended Paydown Order:</p>
                     <ol className="list-decimal list-inside text-sm text-emerald-600 space-y-1">
-                      {results.creditUtilization.paydownOrder.map((account, idx) => (
+                      {util.paydownOrder.map((account, idx) => (
                         <li key={idx}>{account}</li>
                       ))}
                     </ol>
@@ -518,10 +550,13 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
               </>
             )}
           </div>
-        )}
-
+          );
+        })()}
         {/* Age of Credit */}
-        {results?.ageOfCredit && (
+        {(() => {
+          const age = results?.ageOfCredit || results?.creditMetrics?.ageOfCredit;
+          if (!age) return null;
+          return (
           <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-6 mb-6">
             <SectionHeader 
               icon={Calendar} 
@@ -535,46 +570,56 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                 <div className="grid md:grid-cols-4 gap-4 mb-4">
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <p className="text-sm text-blue-700 mb-1">Oldest Account</p>
-                    <p className="text-xl font-bold text-blue-600">{results.ageOfCredit.oldestAccountAge ?? 'N/A'}</p>
-                    <p className="text-xs text-blue-500 mt-1">{results.ageOfCredit.oldestAccountName ?? ''}</p>
+                    <p className="text-xl font-bold text-blue-600">{age.oldestAccountAge ?? age.oldestAccountDate ?? 'N/A'}</p>
+                    <p className="text-xs text-blue-500 mt-1">{age.oldestAccountName ?? ''}</p>
                   </div>
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <p className="text-sm text-blue-700 mb-1">Newest Account</p>
-                    <p className="text-xl font-bold text-blue-600">{results.ageOfCredit.newestAccountAge ?? 'N/A'}</p>
-                    <p className="text-xs text-blue-500 mt-1">{results.ageOfCredit.newestAccountName ?? ''}</p>
+                    <p className="text-xl font-bold text-blue-600">{age.newestAccountAge ?? age.newestAccountDate ?? 'N/A'}</p>
+                    <p className="text-xs text-blue-500 mt-1">{age.newestAccountName ?? ''}</p>
                   </div>
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <p className="text-sm text-blue-700 mb-1">Average Age (AAoA)</p>
-                    <p className="text-xl font-bold text-blue-600">{results.ageOfCredit.averageAgeOfAccounts ?? 'N/A'}</p>
+                    <p className="text-xl font-bold text-blue-600">{age.averageAgeOfAccounts ?? (age.averageAgeMonths ? `${age.averageAgeMonths} months` : 'N/A')}</p>
                   </div>
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <p className="text-sm text-blue-700 mb-1">AAoA (Revolving Only)</p>
-                    <p className="text-xl font-bold text-blue-600">{results.ageOfCredit.averageAgeRevolvingOnly ?? 'N/A'}</p>
+                    <p className="text-xl font-bold text-blue-600">{age.averageAgeRevolvingOnly ?? 'N/A'}</p>
                   </div>
                 </div>
 
-                {results.ageOfCredit.averageAgeFormula && (
+                {(age.averageAgeFormula || age.ageCalc) && (
                   <div className="p-3 bg-gray-50 rounded-lg mb-4 border border-gray-200">
                     <p className="text-sm text-gray-500">Formula: </p>
-                    <p className="text-sm text-gray-700 font-mono">{results.ageOfCredit.averageAgeFormula}</p>
+                    <p className="text-sm text-gray-700 font-mono">{age.averageAgeFormula ?? age.ageCalc}</p>
                   </div>
                 )}
 
-                {results.ageOfCredit.accountsMissingOpenDate && results.ageOfCredit.accountsMissingOpenDate.length > 0 && (
+                {age.notes && (
+                  <div className="p-3 bg-gray-50 rounded-lg mb-4 border border-gray-200">
+                    <p className="text-sm text-gray-600">{age.notes}</p>
+                  </div>
+                )}
+
+                {age.accountsMissingOpenDate && age.accountsMissingOpenDate.length > 0 && (
                   <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                     <p className="text-sm text-gray-600">
                       <AlertCircle className="w-4 h-4 inline mr-1" />
-                      Accounts excluded (missing open date): {results.ageOfCredit.accountsMissingOpenDate.join(', ')}
+                      Accounts excluded (missing open date): {age.accountsMissingOpenDate.join(', ')}
                     </p>
                   </div>
                 )}
               </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Credit Mix */}
-        {results?.creditMix && (
+        {(() => {
+          const mix = results?.creditMix || results?.creditMetrics?.creditMix;
+          if (!mix) return null;
+          return (
           <div className="rounded-2xl bg-white shadow-sm border border-gray-200 p-6 mb-6">
             <SectionHeader 
               icon={PieChart} 
@@ -590,9 +635,13 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                   <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                     <p className="text-sm font-semibold text-purple-700 mb-2">Revolving</p>
                     <div className="space-y-1 text-sm">
-                      <p className="text-gray-700">Open: <span className="text-green-600">{results.creditMix.revolving?.openCount ?? 0}</span></p>
-                      <p className="text-gray-700">Closed: <span className="text-gray-500">{results.creditMix.revolving?.closedCount ?? 0}</span></p>
-                      <p className="text-gray-700">Derogatory: <span className="text-red-600">{results.creditMix.revolving?.derogatoryCount ?? 0}</span></p>
+                      <p className="text-gray-700">Count: <span className="text-purple-600">{mix.revolvingCount ?? mix.revolving?.openCount ?? 0}</span></p>
+                      {mix.revolving?.closedCount != null && (
+                        <p className="text-gray-700">Closed: <span className="text-gray-500">{mix.revolving.closedCount}</span></p>
+                      )}
+                      {mix.revolving?.derogatoryCount != null && (
+                        <p className="text-gray-700">Derogatory: <span className="text-red-600">{mix.revolving.derogatoryCount}</span></p>
+                      )}
                     </div>
                   </div>
 
@@ -600,106 +649,90 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                   <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                     <p className="text-sm font-semibold text-purple-700 mb-2">Installment</p>
                     <div className="space-y-1 text-sm">
-                      <p className="text-gray-700">Auto: <span className="text-gray-600">{results.creditMix.installment?.autoCount ?? 0}</span></p>
-                      <p className="text-gray-700">Personal: <span className="text-gray-600">{results.creditMix.installment?.personalCount ?? 0}</span></p>
-                      <p className="text-gray-700">Student: <span className="text-gray-600">{results.creditMix.installment?.studentCount ?? 0}</span></p>
+                      <p className="text-gray-700">Count: <span className="text-purple-600">{mix.installmentCount ?? (mix.installment ? (mix.installment.autoCount ?? 0) + (mix.installment.personalCount ?? 0) + (mix.installment.studentCount ?? 0) + (mix.installment.otherCount ?? 0) : 0)}</span></p>
                     </div>
                   </div>
 
                   {/* Mortgage */}
                   <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                     <p className="text-sm font-semibold text-purple-700 mb-2">Mortgage</p>
-                    <p className="text-2xl font-bold text-gray-900">{results.creditMix.mortgage?.count ?? 0}</p>
-                    {results.creditMix.mortgage?.statuses && (
-                      <p className="text-xs text-gray-500 mt-1">{results.creditMix.mortgage.statuses.join(', ')}</p>
-                    )}
+                    <p className="text-2xl font-bold text-gray-900">{mix.mortgageCount ?? mix.mortgage?.count ?? 0}</p>
                   </div>
 
-                  {/* Collections */}
+                  {/* Student Loans / Collections */}
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm font-semibold text-red-700 mb-2">Collections</p>
-                    <p className="text-2xl font-bold text-red-600">{results.creditMix.collections?.count ?? 0}</p>
-                    <p className="text-sm text-red-500">
-                      {results.creditMix.collections?.totalBalanceFormatted ?? `$${(results.creditMix.collections?.totalBalance ?? 0).toLocaleString()}`}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600">{mix.collections?.count ?? 0}</p>
+                    {mix.collections?.totalBalanceFormatted && (
+                      <p className="text-sm text-red-500">{mix.collections.totalBalanceFormatted}</p>
+                    )}
                   </div>
                 </div>
 
                 {/* Bankruptcy */}
-                {results.creditMix.publicRecords?.bankruptcyPresent && (
+                {mix.publicRecords?.bankruptcyPresent && (
                   <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4">
                     <p className="text-sm font-semibold text-orange-700 mb-2">Public Record: Bankruptcy</p>
                     <div className="grid md:grid-cols-3 gap-4 text-sm">
-                      <p className="text-gray-700">Type: <span className="text-orange-600">{results.creditMix.publicRecords.bankruptcyType ?? 'Unknown'}</span></p>
-                      <p className="text-gray-700">Filing Date: <span className="text-orange-600">{results.creditMix.publicRecords.filingDate ?? 'Not shown'}</span></p>
-                      <p className="text-gray-700">Discharge Date: <span className="text-orange-600">{results.creditMix.publicRecords.dischargeDate ?? 'Not shown'}</span></p>
+                      <p className="text-gray-700">Type: <span className="text-orange-600">{mix.publicRecords.bankruptcyType ?? 'Unknown'}</span></p>
+                      <p className="text-gray-700">Filing Date: <span className="text-orange-600">{mix.publicRecords.filingDate ?? 'Not shown'}</span></p>
+                      <p className="text-gray-700">Discharge Date: <span className="text-orange-600">{mix.publicRecords.dischargeDate ?? 'Not shown'}</span></p>
                     </div>
                   </div>
                 )}
 
                 {/* Mix Weaknesses */}
-                {results.creditMix.mixWeaknesses && results.creditMix.mixWeaknesses.length > 0 && (
+                {mix.mixWeaknesses && mix.mixWeaknesses.length > 0 && (
                   <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm font-semibold text-yellow-700 mb-2">Identified Weaknesses:</p>
                     <ul className="list-disc list-inside text-sm text-yellow-600 space-y-1">
-                      {results.creditMix.mixWeaknesses.map((weakness, idx) => (
+                      {mix.mixWeaknesses.map((weakness, idx) => (
                         <li key={idx}>{weakness}</li>
                       ))}
                     </ul>
                   </div>
                 )}
+
+                {mix.notes && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-600">{mix.notes}</p>
+                  </div>
+                )}
               </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Active Accounts */}
         {(() => {
-          // Per spec: rows = response.accounts ?? response.masterTradelineTable ?? []
-          // The API returns formattedReport.accounts from Step 4, or masterTradelineTable from Step 1
           const rawResults = results as any;
           const rows: any[] = 
-            rawResults?.accounts ??                         // Direct accounts array
-            rawResults?.formattedReport?.accounts ??        // Step 4 formatted accounts
-            results?.masterTradelineTable ??                // Step 1 tradelines
-            results?.accountAnalysis ??                     // Legacy account analysis
-            results?.creditUtilization?.perCardUtilization ?? // Utilization data
+            rawResults?.accounts ??
+            rawResults?.finalReport?.accounts ??
+            results?.masterTradelineTable ??
+            results?.accountAnalysis ??
             [];
           
           if (!rows || rows.length === 0) return null;
 
-          // Helper to extract balance from various possible locations
           const extractBalance = (row: any): number => {
-            // Check direct balance property
             if (row.balance != null) {
               return typeof row.balance === 'number' ? row.balance : parseFloat(String(row.balance).replace(/[^0-9.-]/g, '')) || 0;
             }
-            // Check currentBalance
             if (row.currentBalance != null) {
               return typeof row.currentBalance === 'number' ? row.currentBalance : parseFloat(String(row.currentBalance).replace(/[^0-9.-]/g, '')) || 0;
-            }
-            // Check perBureauData for balances (masterTradelineTable structure)
-            if (row.perBureauData) {
-              const bureaus = ['equifax', 'experian', 'transunion'];
-              for (const b of bureaus) {
-                const bureauData = row.perBureauData[b];
-                if (bureauData?.currentBalance) {
-                  return parseFloat(String(bureauData.currentBalance).replace(/[^0-9.-]/g, '')) || 0;
-                }
-              }
             }
             return 0;
           };
 
-          // Helper to check for any discrepancy/violation
           const hasIssue = (row: any): boolean => {
             if (row.potentialViolation) return true;
             if (row.discrepanciesNoted && row.discrepanciesNoted.length > 0) return true;
-            if (row.hasViolations) return true;
+            if (row.isDerogatory) return true;
             return false;
           };
 
-          // Sort: items with issues first, then by balance descending
           const sortedRows = [...rows].sort((a: any, b: any) => {
             const aHasIssue = hasIssue(a);
             const bHasIssue = hasIssue(b);
@@ -709,20 +742,16 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
           });
 
           const displayRows = showAllAccounts ? sortedRows : sortedRows.slice(0, 15);
-          
-          // Check which bureaus are present
-          const hasBureausColumn = rows.some((r: any) => r.perBureauData);
 
           const getViolationPill = (row: any) => {
             const violation = row.potentialViolation;
             const discrepancies = row.discrepanciesNoted;
-            const hasViolations = row.hasViolations;
+            const isDerogatory = row.isDerogatory;
             
-            if (!violation && (!discrepancies || discrepancies.length === 0) && !hasViolations) {
+            if (!violation && (!discrepancies || discrepancies.length === 0) && !isDerogatory) {
               return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
             }
             
-            // Check discrepancies first
             if (discrepancies && discrepancies.length > 0) {
               const disc = discrepancies.join(' ').toLowerCase();
               if (disc.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Wrong Amount / 1099-C</span>;
@@ -732,48 +761,16 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             
             if (violation) {
               const v = violation.toLowerCase();
-              let label = 'Potential issue';
-              if (v.includes('1099')) label = 'Wrong Amount / 1099-C';
-              else if (v.includes('duplicate')) label = 'Duplicate';
-              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">{label}</span>;
+              if (v.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Wrong Amount / 1099-C</span>;
+              if (v.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Duplicate</span>;
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Potential issue</span>;
             }
             
-            return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Review</span>;
-          };
-
-          const formatBalance = (balance: any) => {
-            if (balance == null) return '$0';
-            const num = typeof balance === 'number' ? balance : parseFloat(String(balance).replace(/[^0-9.-]/g, '')) || 0;
-            return `$${num.toLocaleString()}`;
-          };
-
-          const bureauLabels: Record<string, string> = {
-            equifax: 'EQF',
-            experian: 'EXP',
-            transunion: 'TU',
-          };
-          
-          // Helper to get bureaus present for a row
-          const getBureausPresent = (row: any): string[] => {
-            if (!row.perBureauData) return [];
-            const present: string[] = [];
-            if (row.perBureauData.equifax) present.push('equifax');
-            if (row.perBureauData.experian) present.push('experian');
-            if (row.perBureauData.transunion) present.push('transunion');
-            return present;
-          };
-          
-          // Helper to get status from row
-          const getStatus = (row: any): string => {
-            if (row.status) return row.status;
-            // Check perBureauData for status
-            if (row.perBureauData) {
-              const bureaus = ['equifax', 'experian', 'transunion'];
-              for (const b of bureaus) {
-                if (row.perBureauData[b]?.status) return row.perBureauData[b].status;
-              }
+            if (isDerogatory) {
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Derogatory</span>;
             }
-            return 'Unknown';
+            
+            return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
           };
 
           return (
@@ -794,45 +791,38 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                           <th className="text-left py-2 px-2 font-semibold text-gray-700">Account</th>
                           <th className="text-left py-2 px-2 font-semibold text-gray-700">Type</th>
                           <th className="text-right py-2 px-2 font-semibold text-gray-700">Balance</th>
-                          {hasBureausColumn && <th className="text-left py-2 px-2 font-semibold text-gray-700">Bureaus</th>}
                           <th className="text-left py-2 px-2 font-semibold text-gray-700">Status</th>
-                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Violation Check</th>
+                          <th className="text-right py-2 px-2 font-semibold text-gray-700">Violation Check</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {displayRows.map((row: any, idx: number) => {
-                          // Support multiple data structures
-                          const accountLabel = row.account || row.name || row.furnisherName || row.accountName || 'Unknown';
-                          const accountType = row.type || row.accountType || '—';
-                          const balance = formatBalance(extractBalance(row));
-                          const status = getStatus(row);
-                          const bureaus = getBureausPresent(row);
-
-                          return (
-                            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="py-2 px-2 text-gray-900 font-medium max-w-[200px] truncate">{accountLabel}</td>
-                              <td className="py-2 px-2 text-gray-600">{accountType}</td>
-                              <td className="py-2 px-2 text-gray-900 text-right">{balance}</td>
-                              {hasBureausColumn && (
-                                <td className="py-2 px-2">
-                                  <div className="flex gap-1">
-                                    {bureaus.map((b: string, bIdx: number) => (
-                                      <span key={bIdx} className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
-                                        {bureauLabels[b.toLowerCase()] || b}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                              )}
-                              <td className="py-2 px-2">
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
-                                  {status}
-                                </span>
-                              </td>
-                              <td className="py-2 px-2">{getViolationPill(row)}</td>
-                            </tr>
-                          );
-                        })}
+                        {displayRows.map((row: any, idx: number) => (
+                          <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-2 px-2 font-medium text-gray-900">
+                              {row.name ?? row.creditorName ?? row.furnisherName ?? row.accountName ?? 'Unknown'}
+                            </td>
+                            <td className="py-2 px-2 text-gray-600">
+                              {row.type ?? row.accountType ?? 'Unknown'}
+                            </td>
+                            <td className="py-2 px-2 text-right font-medium text-gray-900">
+                              ${extractBalance(row).toLocaleString()}
+                            </td>
+                            <td className="py-2 px-2">
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                (row.status ?? '').toLowerCase().includes('charged') || (row.status ?? '').toLowerCase().includes('collection')
+                                  ? 'bg-red-100 text-red-700'
+                                  : (row.status ?? '').toLowerCase().includes('closed')
+                                  ? 'bg-gray-100 text-gray-600'
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {row.status ?? 'Unknown'}
+                              </span>
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              {getViolationPill(row)}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
