@@ -655,9 +655,17 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
 
         {/* Active Accounts */}
         {(() => {
+          // Per spec: rows = response.accounts ?? response.masterTradelineTable ?? []
+          // The API returns formattedReport.accounts from Step 4, or masterTradelineTable from Step 1
           const rawResults = results as any;
-          // Try multiple data sources: accounts, masterTradelineTable, accountAnalysis
-          const rows = rawResults?.accounts ?? results?.masterTradelineTable ?? results?.accountAnalysis ?? [];
+          const rows: any[] = 
+            rawResults?.accounts ??                         // Direct accounts array
+            rawResults?.formattedReport?.accounts ??        // Step 4 formatted accounts
+            results?.masterTradelineTable ??                // Step 1 tradelines
+            results?.accountAnalysis ??                     // Legacy account analysis
+            results?.creditUtilization?.perCardUtilization ?? // Utilization data
+            [];
+          
           if (!rows || rows.length === 0) return null;
 
           // Helper to extract balance from various possible locations
