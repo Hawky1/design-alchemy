@@ -656,32 +656,81 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
         {/* Active Accounts */}
         {(() => {
           const rawResults = results as any;
-          const rows = rawResults?.accounts ?? results?.masterTradelineTable ?? [];
-          if (rows.length === 0) return null;
+          // Try multiple data sources: accounts, masterTradelineTable, accountAnalysis
+          const rows = rawResults?.accounts ?? results?.masterTradelineTable ?? results?.accountAnalysis ?? [];
+          if (!rows || rows.length === 0) return null;
 
-          // Sort: items with potentialViolation first, then by balance descending
+          // Helper to extract balance from various possible locations
+          const extractBalance = (row: any): number => {
+            // Check direct balance property
+            if (row.balance != null) {
+              return typeof row.balance === 'number' ? row.balance : parseFloat(String(row.balance).replace(/[^0-9.-]/g, '')) || 0;
+            }
+            // Check currentBalance
+            if (row.currentBalance != null) {
+              return typeof row.currentBalance === 'number' ? row.currentBalance : parseFloat(String(row.currentBalance).replace(/[^0-9.-]/g, '')) || 0;
+            }
+            // Check perBureauData for balances (masterTradelineTable structure)
+            if (row.perBureauData) {
+              const bureaus = ['equifax', 'experian', 'transunion'];
+              for (const b of bureaus) {
+                const bureauData = row.perBureauData[b];
+                if (bureauData?.currentBalance) {
+                  return parseFloat(String(bureauData.currentBalance).replace(/[^0-9.-]/g, '')) || 0;
+                }
+              }
+            }
+            return 0;
+          };
+
+          // Helper to check for any discrepancy/violation
+          const hasIssue = (row: any): boolean => {
+            if (row.potentialViolation) return true;
+            if (row.discrepanciesNoted && row.discrepanciesNoted.length > 0) return true;
+            if (row.hasViolations) return true;
+            return false;
+          };
+
+          // Sort: items with issues first, then by balance descending
           const sortedRows = [...rows].sort((a: any, b: any) => {
-            const aHasViolation = a.potentialViolation != null;
-            const bHasViolation = b.potentialViolation != null;
-            if (aHasViolation && !bHasViolation) return -1;
-            if (!aHasViolation && bHasViolation) return 1;
-            const aBalance = typeof a.balance === 'number' ? a.balance : parseFloat(String(a.balance || 0).replace(/[^0-9.-]/g, '')) || 0;
-            const bBalance = typeof b.balance === 'number' ? b.balance : parseFloat(String(b.balance || 0).replace(/[^0-9.-]/g, '')) || 0;
-            return bBalance - aBalance;
+            const aHasIssue = hasIssue(a);
+            const bHasIssue = hasIssue(b);
+            if (aHasIssue && !bHasIssue) return -1;
+            if (!aHasIssue && bHasIssue) return 1;
+            return extractBalance(b) - extractBalance(a);
           });
 
           const displayRows = showAllAccounts ? sortedRows : sortedRows.slice(0, 15);
-          const hasBureausColumn = rows.some((r: any) => r.bureaus);
+          
+          // Check which bureaus are present
+          const hasBureausColumn = rows.some((r: any) => r.perBureauData);
 
-          const getViolationPill = (violation: string | null | undefined) => {
-            if (!violation) {
+          const getViolationPill = (row: any) => {
+            const violation = row.potentialViolation;
+            const discrepancies = row.discrepanciesNoted;
+            const hasViolations = row.hasViolations;
+            
+            if (!violation && (!discrepancies || discrepancies.length === 0) && !hasViolations) {
               return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
             }
-            const v = violation.toLowerCase();
-            let label = 'Potential issue';
-            if (v.includes('1099')) label = 'Wrong Amount / 1099-C';
-            else if (v.includes('duplicate')) label = 'Duplicate';
-            return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">{label}</span>;
+            
+            // Check discrepancies first
+            if (discrepancies && discrepancies.length > 0) {
+              const disc = discrepancies.join(' ').toLowerCase();
+              if (disc.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Wrong Amount / 1099-C</span>;
+              if (disc.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Duplicate</span>;
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Discrepancy</span>;
+            }
+            
+            if (violation) {
+              const v = violation.toLowerCase();
+              let label = 'Potential issue';
+              if (v.includes('1099')) label = 'Wrong Amount / 1099-C';
+              else if (v.includes('duplicate')) label = 'Duplicate';
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">{label}</span>;
+            }
+            
+            return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Review</span>;
           };
 
           const formatBalance = (balance: any) => {
@@ -694,6 +743,29 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             equifax: 'EQF',
             experian: 'EXP',
             transunion: 'TU',
+          };
+          
+          // Helper to get bureaus present for a row
+          const getBureausPresent = (row: any): string[] => {
+            if (!row.perBureauData) return [];
+            const present: string[] = [];
+            if (row.perBureauData.equifax) present.push('equifax');
+            if (row.perBureauData.experian) present.push('experian');
+            if (row.perBureauData.transunion) present.push('transunion');
+            return present;
+          };
+          
+          // Helper to get status from row
+          const getStatus = (row: any): string => {
+            if (row.status) return row.status;
+            // Check perBureauData for status
+            if (row.perBureauData) {
+              const bureaus = ['equifax', 'experian', 'transunion'];
+              for (const b of bureaus) {
+                if (row.perBureauData[b]?.status) return row.perBureauData[b].status;
+              }
+            }
+            return 'Unknown';
           };
 
           return (
@@ -721,11 +793,12 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       </thead>
                       <tbody>
                         {displayRows.map((row: any, idx: number) => {
-                          const accountLabel = row.account || row.name || row.furnisherName || 'Unknown';
+                          // Support multiple data structures
+                          const accountLabel = row.account || row.name || row.furnisherName || row.accountName || 'Unknown';
                           const accountType = row.type || row.accountType || '—';
-                          const balance = formatBalance(row.balance || row.currentBalance);
-                          const status = row.status || 'Unknown';
-                          const bureaus = row.bureaus as string[] | undefined;
+                          const balance = formatBalance(extractBalance(row));
+                          const status = getStatus(row);
+                          const bureaus = getBureausPresent(row);
 
                           return (
                             <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
@@ -735,7 +808,7 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                               {hasBureausColumn && (
                                 <td className="py-2 px-2">
                                   <div className="flex gap-1">
-                                    {bureaus?.map((b: string, bIdx: number) => (
+                                    {bureaus.map((b: string, bIdx: number) => (
                                       <span key={bIdx} className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
                                         {bureauLabels[b.toLowerCase()] || b}
                                       </span>
@@ -748,7 +821,7 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                                   {status}
                                 </span>
                               </td>
-                              <td className="py-2 px-2">{getViolationPill(row.potentialViolation)}</td>
+                              <td className="py-2 px-2">{getViolationPill(row)}</td>
                             </tr>
                           );
                         })}
