@@ -428,17 +428,17 @@ async function callGeminiWithPdf(
   try {
     console.log(`Calling Gemini API for ${bureauName}...`);
     
-    // Create abort controller with 120 second timeout (Gemini can take longer for large PDFs)
+    // Create abort controller with 300 second timeout (Gemini Pro can take longer for complex analysis)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error(`Gemini API call timed out for ${bureauName} after 120 seconds`);
+      console.error(`Gemini API call timed out for ${bureauName} after 300 seconds`);
       controller.abort();
-    }, 120000);
+    }, 300000);
     
     let response: Response;
     try {
       response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -474,7 +474,7 @@ async function callGeminiWithPdf(
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return { success: false, error: `Request timed out after 120 seconds for ${bureauName}` };
+        return { success: false, error: `Request timed out after 300 seconds for ${bureauName}` };
       }
       throw fetchError;
     }
