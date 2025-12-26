@@ -65,13 +65,9 @@ export default function Analyze() {
             return;
         }
         
-        // If we already have lead data, proceed with analysis
-        if (leadData) {
-            handleAnalyze(leadData);
-        } else {
-            // Show lead capture dialog
-            setShowLeadDialog(true);
-        }
+        // Bypass lead capture dialog - go straight to analysis
+        const dummyLead: LeadData = { name: 'Test User', email: 'test@example.com' };
+        handleAnalyze(dummyLead);
     };
 
     const handleLeadSubmit = (data: LeadData) => {
