@@ -374,7 +374,7 @@ async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
   }
 }
 
-// Helper function to call OpenAI Responses API with a single PDF file
+// Helper function to call OpenAI Responses API with a single PDF file (with timeout)
 async function callOpenAIWithSinglePdf(
   apiKey: string,
   systemPrompt: string,
@@ -396,27 +396,46 @@ async function callOpenAIWithSinglePdf(
     
     console.log(`Calling OpenAI Responses API for ${bureauName}...`);
     
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        input: [
-          {
-            role: 'user',
-            content: content
+    // Create abort controller with 90 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error(`OpenAI API call timed out for ${bureauName} after 90 seconds`);
+      controller.abort();
+    }, 90000);
+    
+    let response: Response;
+    try {
+      response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-2025-04-14',
+          input: [
+            {
+              role: 'user',
+              content: content
+            }
+          ],
+          text: {
+            format: {
+              type: 'json_object'
+            }
           }
-        ],
-        text: {
-          format: {
-            type: 'json_object'
-          }
-        }
-      }),
-    });
+        }),
+        signal: controller.signal
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return { success: false, error: `Request timed out after 90 seconds for ${bureauName}` };
+      }
+      throw fetchError;
+    }
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -850,6 +869,8 @@ serve(async (req) => {
               console.log(`Successfully analyzed ${bureau}`);
             } else {
               console.error(`Failed to analyze ${bureau}:`, result.error);
+              // Send error progress but continue with other bureaus
+              sendProgress(progressBase + 10, `Warning: ${bureau} analysis failed - ${result.error?.includes('timed out') ? 'timed out' : 'error occurred'}`);
             }
             
             // Small delay between API calls to avoid rate limits
@@ -860,7 +881,7 @@ serve(async (req) => {
           
           if (bureauResults.length === 0) {
             console.error('All analyses failed');
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. Please try again.' })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. The analysis timed out or encountered an error. Please try again with smaller files or fewer reports.' })}\n\n`));
             controller.close();
             return;
           }
