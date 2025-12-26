@@ -325,115 +325,73 @@ finalReport.disputeLetters: array of
 
 NOW ANALYZE THE PROVIDED CREDIT REPORT CONTENT AND RETURN ONLY THE JSON.`;
 
-// Helper function to upload PDF to OpenAI Files API
-async function uploadPdfToOpenAI(
-  apiKey: string,
-  file: File,
-  bureauName: string
-): Promise<{ success: boolean; fileId?: string; error?: string }> {
-  try {
-    console.log(`Uploading ${bureauName} PDF to OpenAI Files API...`);
-    
-    const formData = new FormData();
-    formData.append('purpose', 'user_data');
-    formData.append('file', file, file.name);
-    
-    const response = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Failed to upload ${bureauName} PDF:`, response.status, errorText);
-      return { success: false, error: `Upload failed: ${response.status} - ${errorText}` };
-    }
-    
-    const data = await response.json();
-    console.log(`${bureauName} PDF uploaded successfully, file_id: ${data.id}`);
-    return { success: true, fileId: data.id };
-  } catch (error) {
-    console.error(`Error uploading ${bureauName} PDF:`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+// Helper function to convert file to base64
+async function fileToBase64(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
+  return btoa(binary);
 }
 
-// Helper function to delete file from OpenAI
-async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
-  try {
-    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
-    console.log(`Deleted OpenAI file: ${fileId}`);
-  } catch (error) {
-    console.error(`Failed to delete file ${fileId}:`, error);
-  }
-}
-
-// Helper function to call OpenAI Responses API with multiple PDF files
-async function callOpenAIWithPdfs(
-  apiKey: string,
+// Helper function to call Lovable AI (Gemini) with PDF files
+async function callLovableAI(
   systemPrompt: string,
   userPrompt: string,
-  fileIds: { bureau: string; fileId: string }[]
+  pdfFiles: { bureau: string; base64: string; mimeType: string }[]
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    // Build content array with all files + text prompt
-    const content: { type: string; file_id?: string; text?: string }[] = [];
+    // Build parts array with all PDFs + text prompt
+    const parts: { text?: string; inline_data?: { mime_type: string; data: string } }[] = [];
     
-    // Add all PDF files
-    for (const { fileId } of fileIds) {
-      content.push({
-        type: 'input_file',
-        file_id: fileId
+    // Add all PDF files as inline data
+    for (const { base64, mimeType } of pdfFiles) {
+      parts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: base64
+        }
       });
     }
     
     // Add the text prompt
-    content.push({
-      type: 'input_text',
+    parts.push({
       text: `${systemPrompt}\n\n${userPrompt}`
     });
     
-    console.log(`Calling OpenAI Responses API with ${fileIds.length} PDF files...`);
+    console.log(`Calling Lovable AI (Gemini) with ${pdfFiles.length} PDF files...`);
     
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o',  // Use full model for comprehensive single-pass analysis
-        input: [
+        model: 'google/gemini-2.5-pro',
+        messages: [
           {
             role: 'user',
-            content: content
+            content: parts
           }
         ],
-        text: {
-          format: {
-            type: 'json_object'
-          }
-        }
+        response_format: { type: 'json_object' }
       }),
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI Responses API error:`, response.status, errorText);
+      console.error(`Lovable AI error:`, response.status, errorText);
       return { success: false, error: `API error: ${response.status} - ${errorText}` };
     }
     
     const data = await response.json();
-    console.log(`OpenAI Responses API response received`);
+    console.log(`Lovable AI response received`);
     
     // Extract text content from response
-    const outputText = data.output?.find((o: { type: string }) => o.type === 'message')?.content?.find((c: { type: string }) => c.type === 'output_text')?.text;
+    const outputText = data.choices?.[0]?.message?.content;
     
     if (!outputText) {
       console.error(`No text output in response:`, JSON.stringify(data).substring(0, 500));
@@ -456,7 +414,7 @@ async function callOpenAIWithPdfs(
       return { success: false, error: 'Failed to parse response', rawResponse: outputText.substring(0, 1000) };
     }
   } catch (error) {
-    console.error(`OpenAI Responses API call error:`, error);
+    console.error(`Lovable AI call error:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -531,7 +489,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Analyze report function called - Single-pass comprehensive analysis with OpenAI');
+    console.log('Analyze report function called - Single-pass comprehensive analysis with Lovable AI');
     
     // === INPUT VALIDATION: Check Content-Length header ===
     const contentLength = req.headers.get('content-length');
@@ -576,15 +534,6 @@ serve(async (req) => {
       || 'unknown';
     
     console.log(`Client IP: ${clientIP}`);
-    
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not configured');
-      return new Response(
-        JSON.stringify({ error: 'Internal Server Error', code: 500 }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Initialize Supabase admin client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -674,48 +623,39 @@ serve(async (req) => {
       }
     }
 
-    // Upload PDFs to OpenAI Files API
-    const uploadedFiles: { bureau: string; fileId: string }[] = [];
+    // Convert PDFs to base64 for Lovable AI
+    const pdfFiles: { bureau: string; base64: string; mimeType: string }[] = [];
     const bureauNames: string[] = [];
     
     if (experianFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, experianFile, 'Experian');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'Experian', fileId: result.fileId });
-        bureauNames.push('Experian');
-      } else {
-        console.error('Failed to upload Experian file:', result.error);
-      }
+      console.log('Converting Experian PDF to base64...');
+      const base64 = await fileToBase64(experianFile);
+      pdfFiles.push({ bureau: 'Experian', base64, mimeType: 'application/pdf' });
+      bureauNames.push('Experian');
     }
     
     if (equifaxFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, equifaxFile, 'Equifax');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'Equifax', fileId: result.fileId });
-        bureauNames.push('Equifax');
-      } else {
-        console.error('Failed to upload Equifax file:', result.error);
-      }
+      console.log('Converting Equifax PDF to base64...');
+      const base64 = await fileToBase64(equifaxFile);
+      pdfFiles.push({ bureau: 'Equifax', base64, mimeType: 'application/pdf' });
+      bureauNames.push('Equifax');
     }
     
     if (transunionFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, transunionFile, 'TransUnion');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'TransUnion', fileId: result.fileId });
-        bureauNames.push('TransUnion');
-      } else {
-        console.error('Failed to upload TransUnion file:', result.error);
-      }
+      console.log('Converting TransUnion PDF to base64...');
+      const base64 = await fileToBase64(transunionFile);
+      pdfFiles.push({ bureau: 'TransUnion', base64, mimeType: 'application/pdf' });
+      bureauNames.push('TransUnion');
     }
 
-    if (uploadedFiles.length === 0) {
+    if (pdfFiles.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Failed to upload credit report files. Please try again.', code: 400 }),
+        JSON.stringify({ error: 'No credit report files provided. Please upload at least one file.', code: 400 }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Starting single-pass comprehensive analysis with OpenAI,', bureauNames.length, 'PDF files uploaded');
+    console.log('Starting single-pass comprehensive analysis with Lovable AI,', bureauNames.length, 'PDF files');
     
     // Streaming response
     const encoder = new TextEncoder();
@@ -727,7 +667,7 @@ serve(async (req) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress, message })}\n\n`));
           };
 
-          sendProgress(10, 'PDF files uploaded to OpenAI...');
+          sendProgress(10, 'PDFs ready for analysis...');
           sendProgress(20, `Analyzing ${bureauNames.join(', ')} credit reports...`);
 
           // ========== SINGLE-PASS COMPREHENSIVE ANALYSIS ==========
@@ -736,17 +676,11 @@ serve(async (req) => {
           
           sendProgress(35, 'Extracting data and computing metrics...');
           
-          const result = await callOpenAIWithPdfs(
-            OPENAI_API_KEY,
+          const result = await callLovableAI(
             ANALYSIS_PROMPT,
             userPrompt,
-            uploadedFiles
+            pdfFiles
           );
-          
-          // Cleanup uploaded files
-          for (const { fileId } of uploadedFiles) {
-            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
-          }
           
           if (!result.success) {
             console.error('Analysis failed:', result.error);
