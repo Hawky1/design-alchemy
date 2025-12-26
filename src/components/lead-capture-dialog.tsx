@@ -68,7 +68,7 @@ export default function LeadCaptureDialog({ open, onOpenChange, onSubmit }: Lead
               placeholder="John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={`bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 ${errors.name ? 'border-destructive' : ''}`}
+              className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-primary/50 focus:ring-primary/20 ${errors.name ? 'border-destructive' : ''}`}
             />
             {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
           </div>
@@ -80,7 +80,7 @@ export default function LeadCaptureDialog({ open, onOpenChange, onSubmit }: Lead
               placeholder="john@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 ${errors.email ? 'border-destructive' : ''}`}
+              className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-primary/50 focus:ring-primary/20 ${errors.email ? 'border-destructive' : ''}`}
             />
             {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
           </div>
