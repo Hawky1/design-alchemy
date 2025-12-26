@@ -374,32 +374,27 @@ async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
   }
 }
 
-// Helper function to call OpenAI Responses API with multiple PDF files
-async function callOpenAIWithPdfs(
+// Helper function to call OpenAI Responses API with a single PDF file
+async function callOpenAIWithSinglePdf(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  fileIds: { bureau: string; fileId: string }[]
+  fileId: string,
+  bureauName: string
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    // Build content array with all files + text prompt
-    const content: { type: string; file_id?: string; text?: string }[] = [];
-    
-    // Add all PDF files
-    for (const { fileId } of fileIds) {
-      content.push({
+    const content = [
+      {
         type: 'input_file',
         file_id: fileId
-      });
-    }
+      },
+      {
+        type: 'input_text',
+        text: `${systemPrompt}\n\n${userPrompt}`
+      }
+    ];
     
-    // Add the text prompt
-    content.push({
-      type: 'input_text',
-      text: `${systemPrompt}\n\n${userPrompt}`
-    });
-    
-    console.log(`Calling OpenAI Responses API with ${fileIds.length} PDF files...`);
+    console.log(`Calling OpenAI Responses API for ${bureauName}...`);
     
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -408,7 +403,7 @@ async function callOpenAIWithPdfs(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',  // Use full model for comprehensive single-pass analysis
+        model: 'gpt-4o',
         input: [
           {
             role: 'user',
@@ -425,40 +420,137 @@ async function callOpenAIWithPdfs(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI Responses API error:`, response.status, errorText);
+      console.error(`OpenAI Responses API error for ${bureauName}:`, response.status, errorText);
       return { success: false, error: `API error: ${response.status} - ${errorText}` };
     }
     
     const data = await response.json();
-    console.log(`OpenAI Responses API response received`);
+    console.log(`OpenAI Responses API response received for ${bureauName}`);
     
     // Extract text content from response
     const outputText = data.output?.find((o: { type: string }) => o.type === 'message')?.content?.find((c: { type: string }) => c.type === 'output_text')?.text;
     
     if (!outputText) {
-      console.error(`No text output in response:`, JSON.stringify(data).substring(0, 500));
+      console.error(`No text output in response for ${bureauName}:`, JSON.stringify(data).substring(0, 500));
       return { success: false, error: 'Empty response from AI' };
     }
     
-    console.log(`Response text length: ${outputText.length} chars`);
+    console.log(`Response text length for ${bureauName}: ${outputText.length} chars`);
     
     // Parse JSON
     try {
       const parsed = JSON.parse(outputText);
       return { success: true, data: parsed };
     } catch (parseError) {
-      console.log(`JSON parse failed, attempting repair...`);
+      console.log(`JSON parse failed for ${bureauName}, attempting repair...`);
       const repaired = repairJson(outputText);
       if (repaired) {
-        console.log(`JSON repair successful`);
+        console.log(`JSON repair successful for ${bureauName}`);
         return { success: true, data: repaired };
       }
       return { success: false, error: 'Failed to parse response', rawResponse: outputText.substring(0, 1000) };
     }
   } catch (error) {
-    console.error(`OpenAI Responses API call error:`, error);
+    console.error(`OpenAI Responses API call error for ${bureauName}:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+// Helper function to merge multiple bureau results into one
+function mergeAnalysisResults(results: { bureau: string; data: Record<string, unknown> }[]): Record<string, unknown> {
+  if (results.length === 0) return {};
+  if (results.length === 1) return results[0].data;
+  
+  // Start with the first result as base
+  const merged: Record<string, unknown> = JSON.parse(JSON.stringify(results[0].data));
+  const allBureaus = results.map(r => r.bureau).join(', ');
+  
+  // Update reportSummary with all bureaus
+  if (merged.reportSummary && typeof merged.reportSummary === 'object') {
+    (merged.reportSummary as Record<string, unknown>).bureau = allBureaus;
+  }
+  
+  // Merge arrays from other results
+  for (let i = 1; i < results.length; i++) {
+    const other = results[i].data;
+    
+    // Merge masterTradelineTable
+    if (Array.isArray(other.masterTradelineTable)) {
+      const existing = (merged.masterTradelineTable as unknown[]) || [];
+      merged.masterTradelineTable = [...existing, ...other.masterTradelineTable].slice(0, 15);
+    }
+    
+    // Merge inquiries
+    if (Array.isArray(other.inquiries)) {
+      const existing = (merged.inquiries as unknown[]) || [];
+      merged.inquiries = [...existing, ...other.inquiries].slice(0, 10);
+    }
+    
+    // Merge publicRecords
+    if (Array.isArray(other.publicRecords)) {
+      const existing = (merged.publicRecords as unknown[]) || [];
+      merged.publicRecords = [...existing, ...other.publicRecords];
+    }
+    
+    // Merge personalInfoMismatches
+    if (Array.isArray(other.personalInfoMismatches)) {
+      const existing = (merged.personalInfoMismatches as unknown[]) || [];
+      merged.personalInfoMismatches = [...existing, ...other.personalInfoMismatches];
+    }
+    
+    // Merge consumerLawReview.potentialIssues
+    if (other.consumerLawReview && typeof other.consumerLawReview === 'object') {
+      const otherReview = other.consumerLawReview as Record<string, unknown>;
+      if (!merged.consumerLawReview) merged.consumerLawReview = {};
+      const mergedReview = merged.consumerLawReview as Record<string, unknown>;
+      
+      if (Array.isArray(otherReview.potentialIssues)) {
+        const existing = (mergedReview.potentialIssues as unknown[]) || [];
+        mergedReview.potentialIssues = [...existing, ...otherReview.potentialIssues].slice(0, 10);
+      }
+      
+      if (Array.isArray(otherReview.actionPlan)) {
+        const existing = (mergedReview.actionPlan as unknown[]) || [];
+        mergedReview.actionPlan = [...existing, ...otherReview.actionPlan];
+      }
+    }
+    
+    // Merge finalReport arrays
+    if (other.finalReport && typeof other.finalReport === 'object') {
+      const otherFinal = other.finalReport as Record<string, unknown>;
+      if (!merged.finalReport) merged.finalReport = {};
+      const mergedFinal = merged.finalReport as Record<string, unknown>;
+      
+      if (Array.isArray(otherFinal.accounts)) {
+        const existing = (mergedFinal.accounts as unknown[]) || [];
+        mergedFinal.accounts = [...existing, ...otherFinal.accounts].slice(0, 10);
+      }
+      
+      if (Array.isArray(otherFinal.fcraViolations)) {
+        const existing = (mergedFinal.fcraViolations as unknown[]) || [];
+        mergedFinal.fcraViolations = [...existing, ...otherFinal.fcraViolations].slice(0, 10);
+      }
+      
+      if (Array.isArray(otherFinal.disputeLetters)) {
+        const existing = (mergedFinal.disputeLetters as unknown[]) || [];
+        mergedFinal.disputeLetters = [...existing, ...otherFinal.disputeLetters];
+      }
+    }
+    
+    // Sum up totalAccountsCount
+    if (merged.reportSummary && other.reportSummary) {
+      const mergedSummary = merged.reportSummary as Record<string, unknown>;
+      const otherSummary = other.reportSummary as Record<string, unknown>;
+      if (typeof otherSummary.totalAccountsCount === 'number') {
+        mergedSummary.totalAccountsCount = ((mergedSummary.totalAccountsCount as number) || 0) + otherSummary.totalAccountsCount;
+      }
+      if (typeof otherSummary.derogatoryAccountsCount === 'number') {
+        mergedSummary.derogatoryAccountsCount = ((mergedSummary.derogatoryAccountsCount as number) || 0) + otherSummary.derogatoryAccountsCount;
+      }
+    }
+  }
+  
+  return merged;
 }
 
 // JSON repair function
@@ -730,34 +822,53 @@ serve(async (req) => {
           sendProgress(10, 'PDF files uploaded to OpenAI...');
           sendProgress(20, `Analyzing ${bureauNames.join(', ')} credit reports...`);
 
-          // ========== SINGLE-PASS COMPREHENSIVE ANALYSIS ==========
-          const bureauList = bureauNames.join(', ');
-          const userPrompt = `Analyze these credit reports from ${bureauList}. Extract all data, compute metrics, flag issues, check write-offs and balance history, and draft dispute letters as specified.`;
+          // ========== SEQUENTIAL ANALYSIS OF EACH PDF ==========
+          const bureauResults: { bureau: string; data: Record<string, unknown> }[] = [];
+          const totalFiles = uploadedFiles.length;
           
-          sendProgress(35, 'Extracting data and computing metrics...');
-          
-          const result = await callOpenAIWithPdfs(
-            OPENAI_API_KEY,
-            ANALYSIS_PROMPT,
-            userPrompt,
-            uploadedFiles
-          );
-          
-          // Cleanup uploaded files
-          for (const { fileId } of uploadedFiles) {
+          for (let i = 0; i < uploadedFiles.length; i++) {
+            const { bureau, fileId } = uploadedFiles[i];
+            const progressBase = 20 + (i * 50 / totalFiles);
+            
+            sendProgress(progressBase, `Analyzing ${bureau} credit report (${i + 1}/${totalFiles})...`);
+            
+            const userPrompt = `Analyze this ${bureau} credit report. Extract all data, compute metrics, flag issues, check write-offs and balance history, and draft dispute letters as specified.`;
+            
+            const result = await callOpenAIWithSinglePdf(
+              OPENAI_API_KEY,
+              ANALYSIS_PROMPT,
+              userPrompt,
+              fileId,
+              bureau
+            );
+            
+            // Delete the file after processing
             await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            
+            if (result.success && result.data) {
+              bureauResults.push({ bureau, data: result.data as Record<string, unknown> });
+              console.log(`Successfully analyzed ${bureau}`);
+            } else {
+              console.error(`Failed to analyze ${bureau}:`, result.error);
+            }
+            
+            // Small delay between API calls to avoid rate limits
+            if (i < uploadedFiles.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
           
-          if (!result.success) {
-            console.error('Analysis failed:', result.error);
+          if (bureauResults.length === 0) {
+            console.error('All analyses failed');
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. Please try again.' })}\n\n`));
             controller.close();
             return;
           }
 
-          sendProgress(85, 'Finalizing comprehensive credit audit report...');
+          sendProgress(85, 'Merging results from all bureaus...');
 
-          const analysisResult = result.data as Record<string, unknown>;
+          // Merge all bureau results
+          const analysisResult = mergeAnalysisResults(bureauResults);
           
           // Transform the result to match expected frontend schema
           // The new schema has accounts under finalReport.accounts
