@@ -325,112 +325,156 @@ finalReport.disputeLetters: array of
 
 NOW ANALYZE THE PROVIDED CREDIT REPORT CONTENT AND RETURN ONLY THE JSON.`;
 
-// Helper function to upload PDF to OpenAI Files API
-async function uploadPdfToOpenAI(
+// Helper function to upload PDF to Gemini Files API
+async function uploadPdfToGemini(
   apiKey: string,
   file: File,
   bureauName: string
-): Promise<{ success: boolean; fileId?: string; error?: string }> {
+): Promise<{ success: boolean; fileUri?: string; error?: string }> {
   try {
-    console.log(`Uploading ${bureauName} PDF to OpenAI Files API...`);
+    console.log(`Uploading ${bureauName} PDF to Gemini Files API...`);
     
-    const formData = new FormData();
-    formData.append('purpose', 'user_data');
-    formData.append('file', file, file.name);
+    // Step 1: Start resumable upload
+    const startUploadResponse = await fetch(
+      `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(file.size),
+          'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          file: {
+            display_name: `${bureauName}_credit_report_${Date.now()}.pdf`
+          }
+        })
+      }
+    );
     
-    const response = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Failed to upload ${bureauName} PDF:`, response.status, errorText);
-      return { success: false, error: `Upload failed: ${response.status} - ${errorText}` };
+    if (!startUploadResponse.ok) {
+      const errorText = await startUploadResponse.text();
+      console.error(`Failed to start upload for ${bureauName}:`, startUploadResponse.status, errorText);
+      return { success: false, error: `Upload start failed: ${startUploadResponse.status}` };
     }
     
-    const data = await response.json();
-    console.log(`${bureauName} PDF uploaded successfully, file_id: ${data.id}`);
-    return { success: true, fileId: data.id };
+    const uploadUrl = startUploadResponse.headers.get('X-Goog-Upload-URL');
+    if (!uploadUrl) {
+      console.error(`No upload URL returned for ${bureauName}`);
+      return { success: false, error: 'No upload URL returned' };
+    }
+    
+    // Step 2: Upload the file bytes
+    const fileBytes = await file.arrayBuffer();
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Length': String(file.size),
+        'X-Goog-Upload-Offset': '0',
+        'X-Goog-Upload-Command': 'upload, finalize',
+      },
+      body: fileBytes
+    });
+    
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error(`Failed to upload ${bureauName} PDF:`, uploadResponse.status, errorText);
+      return { success: false, error: `Upload failed: ${uploadResponse.status}` };
+    }
+    
+    const uploadResult = await uploadResponse.json();
+    const fileUri = uploadResult.file?.uri;
+    
+    if (!fileUri) {
+      console.error(`No file URI returned for ${bureauName}:`, uploadResult);
+      return { success: false, error: 'No file URI returned' };
+    }
+    
+    console.log(`${bureauName} PDF uploaded successfully, URI: ${fileUri}`);
+    return { success: true, fileUri };
   } catch (error) {
     console.error(`Error uploading ${bureauName} PDF:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
-// Helper function to delete file from OpenAI
-async function deleteOpenAIFile(apiKey: string, fileId: string): Promise<void> {
+// Helper function to delete file from Gemini
+async function deleteGeminiFile(apiKey: string, fileUri: string): Promise<void> {
   try {
-    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
-    console.log(`Deleted OpenAI file: ${fileId}`);
+    // Extract file name from URI (format: https://generativelanguage.googleapis.com/v1beta/files/FILE_NAME)
+    const fileName = fileUri.split('/').pop();
+    if (!fileName) return;
+    
+    await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/files/${fileName}?key=${apiKey}`,
+      { method: 'DELETE' }
+    );
+    console.log(`Deleted Gemini file: ${fileName}`);
   } catch (error) {
-    console.error(`Failed to delete file ${fileId}:`, error);
+    console.error(`Failed to delete Gemini file:`, error);
   }
 }
 
-// Helper function to call OpenAI Responses API with a single PDF file (with timeout)
-async function callOpenAIWithSinglePdf(
+// Helper function to call Gemini API with PDF file
+async function callGeminiWithPdf(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  fileId: string,
+  fileUri: string,
   bureauName: string
 ): Promise<{ success: boolean; data?: unknown; error?: string; rawResponse?: string }> {
   try {
-    const content = [
-      {
-        type: 'input_file',
-        file_id: fileId
-      },
-      {
-        type: 'input_text',
-        text: `${systemPrompt}\n\n${userPrompt}`
-      }
-    ];
+    console.log(`Calling Gemini API for ${bureauName}...`);
     
-    console.log(`Calling OpenAI Responses API for ${bureauName}...`);
-    
-    // Create abort controller with 90 second timeout
+    // Create abort controller with 120 second timeout (Gemini can take longer for large PDFs)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error(`OpenAI API call timed out for ${bureauName} after 90 seconds`);
+      console.error(`Gemini API call timed out for ${bureauName} after 120 seconds`);
       controller.abort();
-    }, 90000);
+    }, 120000);
     
     let response: Response;
     try {
-      response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
-          input: [
-            {
-              role: 'user',
-              content: content
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-06-05:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    fileData: {
+                      mimeType: 'application/pdf',
+                      fileUri: fileUri
+                    }
+                  },
+                  {
+                    text: `${systemPrompt}\n\n${userPrompt}`
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 8192,
+              responseMimeType: 'application/json'
             }
-          ],
-          text: {
-            format: {
-              type: 'json_object'
-            }
-          }
-        }),
-        signal: controller.signal
-      });
+          }),
+          signal: controller.signal
+        }
+      );
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return { success: false, error: `Request timed out after 90 seconds for ${bureauName}` };
+        return { success: false, error: `Request timed out after 120 seconds for ${bureauName}` };
       }
       throw fetchError;
     }
@@ -439,18 +483,24 @@ async function callOpenAIWithSinglePdf(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI Responses API error for ${bureauName}:`, response.status, errorText);
+      console.error(`Gemini API error for ${bureauName}:`, response.status, errorText);
       return { success: false, error: `API error: ${response.status} - ${errorText}` };
     }
     
     const data = await response.json();
-    console.log(`OpenAI Responses API response received for ${bureauName}`);
+    console.log(`Gemini API response received for ${bureauName}`);
     
     // Extract text content from response
-    const outputText = data.output?.find((o: { type: string }) => o.type === 'message')?.content?.find((c: { type: string }) => c.type === 'output_text')?.text;
+    const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!outputText) {
       console.error(`No text output in response for ${bureauName}:`, JSON.stringify(data).substring(0, 500));
+      
+      // Check for blocked content
+      if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+        return { success: false, error: 'Content blocked by safety filters' };
+      }
+      
       return { success: false, error: 'Empty response from AI' };
     }
     
@@ -470,7 +520,7 @@ async function callOpenAIWithSinglePdf(
       return { success: false, error: 'Failed to parse response', rawResponse: outputText.substring(0, 1000) };
     }
   } catch (error) {
-    console.error(`OpenAI Responses API call error for ${bureauName}:`, error);
+    console.error(`Gemini API call error for ${bureauName}:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -642,7 +692,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Analyze report function called - Single-pass comprehensive analysis with OpenAI');
+    console.log('Analyze report function called - Using Gemini API with native PDF support');
     
     // === INPUT VALIDATION: Check Content-Length header ===
     const contentLength = req.headers.get('content-length');
@@ -688,9 +738,9 @@ serve(async (req) => {
     
     console.log(`Client IP: ${clientIP}`);
     
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'Internal Server Error', code: 500 }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -785,14 +835,14 @@ serve(async (req) => {
       }
     }
 
-    // Upload PDFs to OpenAI Files API
-    const uploadedFiles: { bureau: string; fileId: string }[] = [];
+    // Upload PDFs to Gemini Files API
+    const uploadedFiles: { bureau: string; fileUri: string }[] = [];
     const bureauNames: string[] = [];
     
     if (experianFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, experianFile, 'Experian');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'Experian', fileId: result.fileId });
+      const result = await uploadPdfToGemini(GEMINI_API_KEY, experianFile, 'Experian');
+      if (result.success && result.fileUri) {
+        uploadedFiles.push({ bureau: 'Experian', fileUri: result.fileUri });
         bureauNames.push('Experian');
       } else {
         console.error('Failed to upload Experian file:', result.error);
@@ -800,9 +850,9 @@ serve(async (req) => {
     }
     
     if (equifaxFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, equifaxFile, 'Equifax');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'Equifax', fileId: result.fileId });
+      const result = await uploadPdfToGemini(GEMINI_API_KEY, equifaxFile, 'Equifax');
+      if (result.success && result.fileUri) {
+        uploadedFiles.push({ bureau: 'Equifax', fileUri: result.fileUri });
         bureauNames.push('Equifax');
       } else {
         console.error('Failed to upload Equifax file:', result.error);
@@ -810,9 +860,9 @@ serve(async (req) => {
     }
     
     if (transunionFile) {
-      const result = await uploadPdfToOpenAI(OPENAI_API_KEY, transunionFile, 'TransUnion');
-      if (result.success && result.fileId) {
-        uploadedFiles.push({ bureau: 'TransUnion', fileId: result.fileId });
+      const result = await uploadPdfToGemini(GEMINI_API_KEY, transunionFile, 'TransUnion');
+      if (result.success && result.fileUri) {
+        uploadedFiles.push({ bureau: 'TransUnion', fileUri: result.fileUri });
         bureauNames.push('TransUnion');
       } else {
         console.error('Failed to upload TransUnion file:', result.error);
@@ -826,7 +876,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Starting single-pass comprehensive analysis with OpenAI,', bureauNames.length, 'PDF files uploaded');
+    console.log('Starting analysis with Gemini,', bureauNames.length, 'PDF files uploaded');
     
     // Streaming response
     const encoder = new TextEncoder();
@@ -838,50 +888,49 @@ serve(async (req) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress, message })}\n\n`));
           };
 
-          sendProgress(10, 'PDF files uploaded to OpenAI...');
-          sendProgress(20, `Analyzing ${bureauNames.join(', ')} credit reports...`);
+          sendProgress(10, 'PDF files uploaded...');
+          sendProgress(20, `Analyzing ${bureauNames.join(', ')} credit reports with Gemini...`);
 
           // ========== SEQUENTIAL ANALYSIS OF EACH PDF ==========
           const bureauResults: { bureau: string; data: Record<string, unknown> }[] = [];
           const totalFiles = uploadedFiles.length;
           
           for (let i = 0; i < uploadedFiles.length; i++) {
-            const { bureau, fileId } = uploadedFiles[i];
+            const { bureau, fileUri } = uploadedFiles[i];
             const progressBase = 20 + (i * 50 / totalFiles);
             
             sendProgress(progressBase, `Analyzing ${bureau} credit report (${i + 1}/${totalFiles})...`);
             
             const userPrompt = `Analyze this ${bureau} credit report. Extract all data, compute metrics, flag issues, check write-offs and balance history, and draft dispute letters as specified.`;
             
-            const result = await callOpenAIWithSinglePdf(
-              OPENAI_API_KEY,
+            const result = await callGeminiWithPdf(
+              GEMINI_API_KEY,
               ANALYSIS_PROMPT,
               userPrompt,
-              fileId,
+              fileUri,
               bureau
             );
             
             // Delete the file after processing
-            await deleteOpenAIFile(OPENAI_API_KEY, fileId);
+            await deleteGeminiFile(GEMINI_API_KEY, fileUri);
             
             if (result.success && result.data) {
               bureauResults.push({ bureau, data: result.data as Record<string, unknown> });
               console.log(`Successfully analyzed ${bureau}`);
             } else {
               console.error(`Failed to analyze ${bureau}:`, result.error);
-              // Send error progress but continue with other bureaus
               sendProgress(progressBase + 10, `Warning: ${bureau} analysis failed - ${result.error?.includes('timed out') ? 'timed out' : 'error occurred'}`);
             }
             
-            // Small delay between API calls to avoid rate limits
+            // Small delay between API calls
             if (i < uploadedFiles.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
           
           if (bureauResults.length === 0) {
             console.error('All analyses failed');
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. The analysis timed out or encountered an error. Please try again with smaller files or fewer reports.' })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. Please try again.' })}\n\n`));
             controller.close();
             return;
           }
@@ -892,17 +941,15 @@ serve(async (req) => {
           const analysisResult = mergeAnalysisResults(bureauResults);
           
           // Transform the result to match expected frontend schema
-          // The new schema has accounts under finalReport.accounts
           const finalResult = {
             ...analysisResult,
-            // Ensure accounts array is accessible at top level for frontend compatibility
             accounts: (analysisResult.finalReport as Record<string, unknown>)?.accounts ?? [],
             masterTradelineTable: analysisResult.masterTradelineTable ?? [],
             fcraViolations: (analysisResult.finalReport as Record<string, unknown>)?.fcraViolations ?? [],
             disputeLetters: (analysisResult.finalReport as Record<string, unknown>)?.disputeLetters ?? []
           };
 
-          console.log('Comprehensive analysis completed successfully');
+          console.log('Analysis completed successfully with Gemini');
           sendProgress(98, 'Report ready!');
           
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'completed', result: finalResult })}\n\n`));
