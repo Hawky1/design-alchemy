@@ -14,6 +14,7 @@ import GetReports from "./pages/GetReports";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import Disclaimer from "./pages/Disclaimer";
+import ValueLadder from "./pages/ValueLadder";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                         <Route path="/terms-of-service" element={<TermsOfService />} />
                         <Route path="/disclaimer" element={<Disclaimer />} />
+                        <Route path="/value-ladder" element={<ValueLadder />} />
                     </Routes>
                 </BrowserRouter>
             </TooltipProvider>
