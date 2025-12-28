@@ -11,6 +11,20 @@ import breakingNewsBanner from '@/assets/breaking-news-banner.png';
 import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
 import { Link } from 'react-router-dom';
+import { z } from 'zod';
+
+// Validation schema for lead capture
+const leadSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
+  email: z.string()
+    .trim()
+    .email('Please enter a valid email address')
+    .max(255, 'Email must be less than 255 characters'),
+});
 
 export default function FreeEbook() {
   const [name, setName] = useState('');
@@ -40,18 +54,12 @@ export default function FreeEbook() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !email.trim()) {
+    // Validate input using zod schema
+    const result = leadSchema.safeParse({ name, email });
+    if (!result.success) {
+      const errorMessage = result.error.errors[0]?.message || 'Invalid input';
       toast({
-        title: "Please fill in all fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "Please enter a valid email address",
+        title: errorMessage,
         variant: "destructive"
       });
       return;

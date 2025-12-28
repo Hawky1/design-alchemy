@@ -1,10 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Validation schema for lead data
+const leadSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
+  email: z.string()
+    .trim()
+    .email('Invalid email format')
+    .max(255, 'Email must be less than 255 characters')
+    .transform(val => val.toLowerCase()),
+  ebook_downloaded: z.boolean().optional().default(false),
+  source: z.string().max(100).optional().nullable(),
+  utm_campaign: z.string().max(100).optional().nullable(),
+  utm_source: z.string().max(100).optional().nullable(),
+  utm_medium: z.string().max(100).optional().nullable(),
+});
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,20 +39,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { 
-      name, 
-      email, 
-      ebook_downloaded = false,
-      source,
-      utm_campaign,
-      utm_source,
-      utm_medium 
-    } = body;
-
-    // Validate required fields
-    if (!name || !email) {
+    
+    // Validate input using zod schema
+    const validationResult = leadSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => e.message).join(', ');
+      console.log('Validation failed:', errors);
       return new Response(
-        JSON.stringify({ error: 'Name and email are required' }),
+        JSON.stringify({ error: `Validation failed: ${errors}` }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -40,11 +55,21 @@ serve(async (req) => {
       );
     }
 
+    const { 
+      name, 
+      email, 
+      ebook_downloaded,
+      source,
+      utm_campaign,
+      utm_source,
+      utm_medium 
+    } = validationResult.data;
+
     // Check if lead already exists
     const { data: existingLead } = await supabase
       .from('leads')
       .select('id')
-      .eq('email', email.toLowerCase())
+      .eq('email', email)
       .single();
 
     if (existingLead) {
@@ -85,7 +110,7 @@ serve(async (req) => {
       .from('leads')
       .insert({
         name,
-        email: email.toLowerCase(),
+        email,
         ip_address,
         ebook_downloaded,
         portal_accessed: false,
