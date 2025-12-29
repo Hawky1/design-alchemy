@@ -143,35 +143,39 @@ export default function FreeEbook() {
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-background/40 z-[1]" />
       
-      <main className="relative z-10 min-h-screen flex flex-col justify-center px-4 py-12">
+      <main className="relative z-10 min-h-screen flex flex-col justify-center px-4 py-4 md:py-6">
         <div className="w-full max-w-5xl mx-auto animate-reveal">
           
           {/* Full-width Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-4">
             <img 
               src={breakingNewsBanner} 
               alt="Consumer Alert Breaking News" 
-              className="mx-auto mb-6 max-w-md w-full"
+              className="mx-auto mb-3 max-w-xs md:max-w-sm w-full"
             />
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight mb-2">
               Get Paid Up to <span className="text-primary">$1,000</span> for Each Credit Report Error
             </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Discover how the Fair Credit Reporting Act entitles you to real compensation—and use our free AI scanner to find violations in minutes.
-            </p>
           </div>
 
-          {/* VSL Section */}
-          <div className="mb-10">
+          {/* VSL Section with CTA */}
+          <div className="mb-6 text-center">
             <VSLPlayer 
               videoUrl="https://storage.googleapis.com/msgsndr/HAUHIKH4QhgbgKCPEnEu/media/6951d6de73a5e0dda7815d67.mp4"
               caption="Watch: FCRA Expert Ken LaMothe Reveals How to Get Compensation"
-              className="max-w-3xl mx-auto"
+              className="max-w-2xl mx-auto"
             />
+            <Button 
+              onClick={() => document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="mt-4 h-12 md:h-14 px-6 md:px-8 text-base md:text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg shadow-primary/50 btn-glow"
+            >
+              Get Your Free Guide & Analysis Now
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
           </div>
 
           {/* Two-column layout */}
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+          <div id="signup-form" className="grid md:grid-cols-2 gap-6 lg:gap-10">
             
             {/* Left Column - Book Cover */}
             <div className="flex flex-col items-center justify-center gap-6">
