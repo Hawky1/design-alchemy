@@ -8,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ebookCover from '@/assets/ebook-cover.png';
 import breakingNewsBanner from '@/assets/breaking-news-banner.png';
-import creditBanner from '@/assets/credit-banner-free-download.png';
 import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
 import { Link } from 'react-router-dom';
@@ -166,14 +165,14 @@ export default function FreeEbook() {
               caption="Watch: FCRA Expert Ken LaMothe Reveals How to Get Compensation"
               className="max-w-full sm:max-w-2xl mx-auto"
             />
-            <button 
+            <Button 
               onClick={() => document.getElementById('signup-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="btn-gradient-border mt-3 sm:mt-4 h-11 sm:h-12 md:h-14 px-6 sm:px-8 md:px-10 text-sm sm:text-base md:text-lg font-semibold text-foreground rounded-full flex items-center justify-center gap-2"
+              className="mt-3 sm:mt-4 h-11 sm:h-12 md:h-14 px-4 sm:px-6 md:px-8 text-sm sm:text-base md:text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg shadow-primary/50 btn-glow"
             >
               <span className="hidden sm:inline">Get Your Free Guide & Analysis Now</span>
               <span className="sm:hidden">Get Your Free Guide Now</span>
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
+            </Button>
           </div>
 
           {/* Two-column layout - stacks on mobile */}
@@ -234,15 +233,6 @@ export default function FreeEbook() {
                   </p>
                 </div>
 
-                {/* Mobile-only promotional banner */}
-                <div className="md:hidden">
-                  <img 
-                    src={creditBanner}
-                    alt="Free Download - No Credit Card Required"
-                    className="w-full max-w-xs mx-auto rounded-lg shadow-lg shadow-black/30"
-                  />
-                </div>
-
                 {/* Bullet Points */}
                 <ul className="space-y-2 sm:space-y-3">
                   <li className="flex items-start gap-2 sm:gap-3">
@@ -276,23 +266,23 @@ export default function FreeEbook() {
                     className="h-12 sm:h-14 bg-white text-background placeholder:text-background/60 border-0 text-base sm:text-lg font-medium"
                     disabled={isSubmitting}
                   />
-                  <button 
+                  <Button 
                     type="submit" 
-                    className="btn-gradient-border w-full h-12 sm:h-14 text-lg sm:text-xl font-bold text-foreground rounded-full flex items-center justify-center gap-2"
+                    className="w-full h-12 sm:h-14 text-lg sm:text-xl font-bold bg-background hover:bg-background/90 text-primary"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                        <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
                         Get Instant Access
-                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 ml-2" />
                       </>
                     )}
-                  </button>
+                  </Button>
                 </form>
 
                 {/* Trust badges */}

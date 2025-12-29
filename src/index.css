@@ -138,30 +138,6 @@
   @apply rounded-full px-8 py-4 font-medium transition-all;
 }
 
-/* Gradient border CTA button */
-.btn-gradient-border {
-  background: linear-gradient(hsl(var(--background)), hsl(var(--background))) padding-box,
-              linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(38 92% 50%) 50%, hsl(0 0% 100%) 100%) border-box;
-  border: 1.5px solid transparent;
-  box-shadow: -15px 0 40px -5px hsl(var(--primary) / 0.6),
-              15px 0 40px -5px hsl(0 0% 100% / 0.4);
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-gradient-border:hover {
-  transform: scale(1.03);
-}
-
-.btn-gradient-border:active {
-  transform: scale(0.98);
-}
-
-.btn-gradient-border:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
 /* Card hover effects */
 .card-hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
