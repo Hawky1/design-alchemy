@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ebookCover from '@/assets/ebook-cover.png';
 import breakingNewsBanner from '@/assets/breaking-news-banner.png';
+import freeDownloadBadges from '@/assets/free-download-badges.png';
 import consumerLogo from '@/assets/consumer-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
 import { Link } from 'react-router-dom';
@@ -173,6 +174,13 @@ export default function FreeEbook() {
               <span className="sm:hidden">Get Your Free Guide Now</span>
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
             </Button>
+            
+            {/* Mobile-only badges image */}
+            <img 
+              src={freeDownloadBadges} 
+              alt="Free Download - No Credit Card Required" 
+              className="md:hidden mt-4 max-w-[280px] sm:max-w-xs mx-auto w-full"
+            />
           </div>
 
           {/* Two-column layout - stacks on mobile */}
