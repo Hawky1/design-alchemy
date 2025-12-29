@@ -3,6 +3,10 @@ import { FileText, Shield, TrendingUp, AlertCircle, BarChart3, CheckCircle, Exte
 import consumerLogo from '@/assets/consumer-logo.png';
 import annualCreditReportLogo from '@/assets/annualcreditreport-logo.png';
 import { SettlementsBanner } from '@/components/settlements-banner';
+import { VSLPlayer } from '@/components/vsl-player';
+import { CountdownTimer } from '@/components/countdown-timer';
+import { StickyCTA } from '@/components/sticky-cta';
+import { HeroLeadForm } from '@/components/hero-lead-form';
 export default function Index() {
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 relative overflow-hidden">
@@ -27,8 +31,8 @@ export default function Index() {
                 </div>
             </header>
 
-            {/* Hero Section - Keep dark with video */}
-            <section className="relative pt-32 pb-24 px-6 min-h-[90vh] flex items-center overflow-hidden isolate">
+            {/* Hero Section with VSL */}
+            <section className="relative pt-24 pb-16 px-6 min-h-screen flex items-center overflow-hidden isolate">
                 {/* Video Background */}
                 <div className="absolute inset-0 z-0 bg-black">
                     <video
@@ -36,56 +40,67 @@ export default function Index() {
                         loop
                         muted
                         playsInline
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
                     >
                         <source src="https://storage.googleapis.com/msgsndr/FuOewPgnMEW1CaeIftBR/media/6944c9a85b256bbfd9c619bc.mp4" type="video/mp4" />
                     </video>
                     {/* Dark overlay for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-[1]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80 z-[1]" />
                 </div>
 
-                <div className="max-w-7xl mx-auto text-center relative z-10">
-                    <div className="animate-reveal">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm">
+                <div className="max-w-7xl mx-auto relative z-10 w-full">
+                    {/* Top Badge */}
+                    <div className="text-center mb-8 animate-reveal">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm">
                             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                            <span className="text-white font-medium text-sm">100% FREE Credit Analysis Tool</span>
+                            <span className="text-white font-medium text-sm">FCRA Expert Ken LaMothe Reveals How to Get Compensation</span>
                         </div>
                     </div>
-                    
-                    <h1 className="animate-reveal-delay-1 text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight text-white">
-                        Get a Complete Credit
+
+                    {/* Main Headline */}
+                    <h1 className="animate-reveal-delay-1 text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-[1.1] tracking-tight text-white text-center">
+                        Get Paid Up to <span className="text-primary">$1,000</span> for
                         <br />
-                        <span className="bg-gradient-to-r from-primary via-primary to-accent-coral bg-clip-text text-transparent">Analysis in Minutes</span>
+                        <span className="bg-gradient-to-r from-primary via-primary to-accent-coral bg-clip-text text-transparent">Each Credit Report Error</span>
                     </h1>
                     
-                    <p className="animate-reveal-delay-2 text-lg sm:text-xl text-white/80 font-light max-w-3xl mx-auto mb-8 leading-relaxed">
-                        Upload your credit reports and receive instant AI-powered insights, personalized recommendations, and a comprehensive breakdown of your credit health - plus automatic FCRA violation detection
+                    <p className="animate-reveal-delay-2 text-lg text-white/80 font-light max-w-2xl mx-auto mb-10 leading-relaxed text-center">
+                        Watch this short video to discover how credit report errors could be costing you money — and how to fight back legally
                     </p>
-                    
-                    <div className="animate-reveal-delay-2 flex flex-wrap justify-center gap-3 mb-10">
-                        <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">Experian</span>
-                        <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">Equifax</span>
-                        <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">TransUnion</span>
+
+                    {/* Two Column Layout: VSL + Form */}
+                    <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center animate-reveal-delay-2">
+                        {/* Left - VSL Player */}
+                        <div>
+                            <VSLPlayer 
+                                videoUrl="https://storage.googleapis.com/msgsndr/HAUHIKH4QhgbgKCPEnEu/media/6951d6de73a5e0dda7815d67.mp4"
+                                caption="Watch: Ken LaMothe explains how to get compensation for credit errors"
+                            />
+                        </div>
+
+                        {/* Right - Lead Capture Form */}
+                        <div className="flex flex-col items-center lg:items-start">
+                            {/* Countdown Timer */}
+                            <div className="mb-6">
+                                <CountdownTimer />
+                            </div>
+
+                            {/* Lead Form */}
+                            <HeroLeadForm />
+
+                            {/* Bureau Badges */}
+                            <div className="flex flex-wrap justify-center lg:justify-start gap-3 mt-6">
+                                <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">Experian</span>
+                                <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">Equifax</span>
+                                <span className="px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm text-sm font-medium">TransUnion</span>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div className="animate-reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link to="/analyze">
-                            <button className="btn-pill btn-glow bg-primary text-primary-foreground font-semibold text-lg">
-                                Start Free Credit Analysis
-                            </button>
-                        </Link>
-                        <Link to="/analyze">
-                            <button className="btn-pill border border-white/30 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 font-medium transition-all">
-                                Learn More
-                            </button>
-                        </Link>
-                    </div>
-                    
-                    <p className="animate-reveal-delay-3 text-sm text-white/60 mt-6">
-                        Upload reports from all 3 bureaus for the most comprehensive analysis
-                    </p>
                 </div>
             </section>
+
+            {/* Sticky CTA Bar */}
+            <StickyCTA />
 
             {/* Get Free Reports Banner */}
             <section className="py-12 px-6 bg-gradient-to-r from-primary/5 via-white to-primary/5 border-y border-gray-100">
