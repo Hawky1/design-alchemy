@@ -175,12 +175,6 @@ export default function FreeEbook() {
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
             </Button>
             
-            {/* Mobile-only badges image */}
-            <img 
-              src={freeDownloadBadges} 
-              alt="Free Download - No Credit Card Required" 
-              className="md:hidden mt-4 max-w-[280px] sm:max-w-xs mx-auto w-full"
-            />
           </div>
 
           {/* Two-column layout - stacks on mobile */}
@@ -236,6 +230,12 @@ export default function FreeEbook() {
                   <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                     Claim Your FREE Guide
                   </h2>
+                  {/* Mobile-only badges image */}
+                  <img 
+                    src={freeDownloadBadges} 
+                    alt="Free Download - No Credit Card Required" 
+                    className="md:hidden mt-2 max-w-[200px] sm:max-w-[240px] mx-auto w-full"
+                  />
                   <p className="text-white/90 text-sm sm:text-base">
                     Join 10,000+ consumers who discovered hidden violations
                   </p>
