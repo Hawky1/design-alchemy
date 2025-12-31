@@ -216,14 +216,17 @@ creditMix:
   "mixWeaknesses": [strings]
 }
 
-masterTradelineTable: array (max 15) of
+masterTradelineTable: array (ALL accounts from report) of
 {
   "creditorName": string,
-  "accountType": string,
+  "accountType": string (e.g., "Credit Card", "Installment", "Collection", "Mortgage"),
   "accountNumberLast4": string|null,
-  "status": string,
+  "status": string (e.g., "Open", "Charged Off/Closed", "Collection", "Paid, Closed"),
   "currentBalance": number,
-  "isDerogatory": boolean
+  "isDerogatory": boolean,
+  "bureaus": array of strings (which bureaus report this account: "EXP", "EQF", "TU"),
+  "violationCheck": string (one of: "Clean", "Duplicate", "1099-C", "Wrong Amount", "Identity Theft", "Post-Bankruptcy", "Cross-bureau Issue", or combination like "Wrong Amount / 1099-C"),
+  "crossBureauIssue": boolean (true if account has discrepancies across bureaus)
 }
 
 accounts: array (max 10, prioritize derogatory/collections) of
@@ -234,7 +237,9 @@ accounts: array (max 10, prioritize derogatory/collections) of
   "balance": number,
   "status": string,
   "potentialViolation": string|null,
-  "discrepanciesNoted": [strings]|null
+  "discrepanciesNoted": [strings]|null,
+  "bureaus": array of strings (which bureaus report this account: "EXP", "EQF", "TU"),
+  "violationCheck": string (one of: "Clean", "Duplicate", "1099-C", "Wrong Amount", "Identity Theft", "Post-Bankruptcy", "Cross-bureau Issue")
 }
 
 sixCategoryIssueFlags:

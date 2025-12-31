@@ -749,6 +749,34 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
           const displayRows = showAllAccounts ? sortedRows : sortedRows.slice(0, 15);
 
           const getViolationPill = (row: any) => {
+            // First check if violationCheck field exists from AI response
+            if (row.violationCheck) {
+              const v = row.violationCheck.toLowerCase();
+              if (v === 'clean') {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
+              }
+              if (v.includes('1099')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Wrong Amount / 1099-C</span>;
+              }
+              if (v.includes('duplicate')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Duplicate</span>;
+              }
+              if (v.includes('identity')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Identity Theft</span>;
+              }
+              if (v.includes('bankruptcy')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Post-Bankruptcy</span>;
+              }
+              if (v.includes('wrong')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Wrong Amount</span>;
+              }
+              if (v.includes('cross-bureau')) {
+                return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Cross-bureau Issue</span>;
+              }
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{row.violationCheck}</span>;
+            }
+            
+            // Fallback to legacy fields
             const violation = row.potentialViolation;
             const discrepancies = row.discrepanciesNoted;
             const isDerogatory = row.isDerogatory;
@@ -759,16 +787,16 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             
             if (discrepancies && discrepancies.length > 0) {
               const disc = discrepancies.join(' ').toLowerCase();
-              if (disc.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Wrong Amount / 1099-C</span>;
-              if (disc.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Duplicate</span>;
+              if (disc.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Wrong Amount / 1099-C</span>;
+              if (disc.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Duplicate</span>;
               return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Discrepancy</span>;
             }
             
             if (violation) {
               const v = violation.toLowerCase();
-              if (v.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Wrong Amount / 1099-C</span>;
-              if (v.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Duplicate</span>;
-              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Potential issue</span>;
+              if (v.includes('1099')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Wrong Amount / 1099-C</span>;
+              if (v.includes('duplicate')) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Duplicate</span>;
+              return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Potential issue</span>;
             }
             
             if (isDerogatory) {
@@ -776,6 +804,45 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
             }
             
             return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Clean</span>;
+          };
+          
+          const getBureauBadges = (row: any) => {
+            const bureaus = row.bureaus || [];
+            const hasCrossBureauIssue = row.crossBureauIssue || row.violationCheck?.toLowerCase().includes('cross-bureau');
+            
+            const bureauColors: Record<string, string> = {
+              'EXP': 'bg-blue-500 text-white',
+              'EQF': 'bg-red-500 text-white', 
+              'TU': 'bg-green-600 text-white',
+            };
+            
+            // If no bureaus data, try to detect from reportSummary
+            if (bureaus.length === 0) {
+              const rawResults = results as any;
+              const bureau = rawResults?.reportSummary?.bureau || '';
+              if (bureau.toLowerCase().includes('experian')) bureaus.push('EXP');
+              if (bureau.toLowerCase().includes('equifax')) bureaus.push('EQF');
+              if (bureau.toLowerCase().includes('transunion')) bureaus.push('TU');
+            }
+            
+            return (
+              <div className="flex flex-col gap-1">
+                <div className="flex gap-1">
+                  {bureaus.length > 0 ? bureaus.map((b: string) => (
+                    <span key={b} className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${bureauColors[b] || 'bg-gray-500 text-white'}`}>
+                      {b}
+                    </span>
+                  )) : (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-400 text-white">N/A</span>
+                  )}
+                </div>
+                {hasCrossBureauIssue && (
+                  <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5">
+                    <AlertTriangle className="w-2.5 h-2.5" />Cross-bureau Issue
+                  </span>
+                )}
+              </div>
+            );
           };
 
           return (
@@ -792,42 +859,58 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Account</th>
-                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Type</th>
-                          <th className="text-right py-2 px-2 font-semibold text-gray-700">Balance</th>
-                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Status</th>
-                          <th className="text-right py-2 px-2 font-semibold text-gray-700">Violation Check</th>
+                        <tr className="border-b border-gray-200 bg-gray-50">
+                          <th className="text-left py-3 px-3 font-semibold text-gray-700">Account</th>
+                          <th className="text-left py-3 px-3 font-semibold text-gray-700">Type</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-700">Balance</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-700">Bureaus</th>
+                          <th className="text-left py-3 px-3 font-semibold text-gray-700">Status</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-700">Violation Check</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {displayRows.map((row: any, idx: number) => (
-                          <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-2 px-2 font-medium text-gray-900">
-                              {row.name ?? row.creditorName ?? row.furnisherName ?? row.accountName ?? 'Unknown'}
-                            </td>
-                            <td className="py-2 px-2 text-gray-600">
-                              {row.type ?? row.accountType ?? 'Unknown'}
-                            </td>
-                            <td className="py-2 px-2 text-right font-medium text-gray-900">
-                              ${extractBalance(row).toLocaleString()}
-                            </td>
-                            <td className="py-2 px-2">
-                              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                                (row.status ?? '').toLowerCase().includes('charged') || (row.status ?? '').toLowerCase().includes('collection')
-                                  ? 'bg-red-100 text-red-700'
-                                  : (row.status ?? '').toLowerCase().includes('closed')
-                                  ? 'bg-gray-100 text-gray-600'
-                                  : 'bg-green-100 text-green-700'
-                              }`}>
-                                {row.status ?? 'Unknown'}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-right">
-                              {getViolationPill(row)}
-                            </td>
-                          </tr>
-                        ))}
+                        {displayRows.map((row: any, idx: number) => {
+                          const hasIssueRow = row.violationCheck && row.violationCheck.toLowerCase() !== 'clean';
+                          return (
+                            <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 ${hasIssueRow ? 'bg-red-50/50' : ''}`}>
+                              <td className="py-3 px-3">
+                                <div className="flex flex-col">
+                                  <span className={`font-medium ${hasIssueRow ? 'text-red-700' : 'text-gray-900'}`}>
+                                    {row.name ?? row.creditorName ?? row.furnisherName ?? row.accountName ?? 'Unknown'}
+                                  </span>
+                                  {row.crossBureauIssue && (
+                                    <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5 mt-0.5">
+                                      <AlertTriangle className="w-2.5 h-2.5" />Cross-bureau Issue
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-gray-600">
+                                {row.type ?? row.accountType ?? 'Unknown'}
+                              </td>
+                              <td className="py-3 px-3 text-right font-medium text-gray-900">
+                                ${extractBalance(row).toLocaleString()}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                {getBureauBadges(row)}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                  (row.status ?? '').toLowerCase().includes('charged') || (row.status ?? '').toLowerCase().includes('collection')
+                                    ? 'bg-red-100 text-red-700'
+                                    : (row.status ?? '').toLowerCase().includes('closed')
+                                    ? 'bg-gray-100 text-gray-600'
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {row.status ?? 'Unknown'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                {getViolationPill(row)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
