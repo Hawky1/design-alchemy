@@ -144,6 +144,7 @@ RETURN EXACTLY THIS JSON STRUCTURE (all top-level keys must exist even if null/e
   "ageOfCredit": {...},
   "creditMix": {...},
   "masterTradelineTable": [...],
+  "accounts": [...],
   "sixCategoryIssueFlags": {...},
   "consumerActionPlan": {...},
   "notDetectableFromReport": [...],
@@ -223,6 +224,17 @@ masterTradelineTable: array (max 15) of
   "status": string,
   "currentBalance": number,
   "isDerogatory": boolean
+}
+
+accounts: array (max 10, prioritize derogatory/collections) of
+{
+  "name": string,
+  "type": string,
+  "accountNumberLast4": string|null,
+  "balance": number,
+  "status": string,
+  "potentialViolation": string|null,
+  "discrepanciesNoted": [strings]|null
 }
 
 sixCategoryIssueFlags:
