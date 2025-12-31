@@ -707,12 +707,23 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
         {/* Active Accounts */}
         {(() => {
           const rawResults = results as any;
+          
+          // Debug logging
+          console.log('=== Active Accounts Debug ===');
+          console.log('rawResults.accounts:', rawResults?.accounts);
+          console.log('rawResults.finalReport?.accounts:', rawResults?.finalReport?.accounts);
+          console.log('results.masterTradelineTable:', results?.masterTradelineTable);
+          console.log('results.accountAnalysis:', results?.accountAnalysis);
+          
           const rows: any[] = 
             rawResults?.accounts ??
             rawResults?.finalReport?.accounts ??
             results?.masterTradelineTable ??
             results?.accountAnalysis ??
             [];
+          
+          console.log('Final rows array:', rows);
+          console.log('Rows length:', rows?.length);
           
           if (!rows || rows.length === 0) return null;
 
