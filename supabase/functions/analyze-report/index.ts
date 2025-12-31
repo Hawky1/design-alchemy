@@ -55,34 +55,56 @@ From the provided credit report content, produce a single VALID JSON output that
 
 6) Drafts dispute letters for each negative/derogatory account (one letter per account)
 
-7) CROSS-BUREAU ANALYSIS: Compare accounts across all bureaus to detect discrepancies
+7) CROSS-BUREAU ANALYSIS: Merge and compare accounts across ALL bureaus provided
 
-CROSS-BUREAU DETECTION RULES (CRITICAL)
+CROSS-BUREAU MERGING RULES (CRITICAL - MUST FOLLOW)
 
-For EACH account, you MUST:
-- Track which bureaus report it: "EXP" (Experian), "EQF" (Equifax), "TU" (TransUnion)
-- Compare data across bureaus for the SAME account (match by creditor name + last 4 digits)
-- Flag as "Cross-bureau Issue" if ANY of these discrepancies exist:
-  * Different balances reported across bureaus
-  * Different payment statuses (e.g., "Current" on one, "30 days late" on another)
-  * Different account statuses (e.g., "Open" vs "Closed")
-  * Account appears on some bureaus but not others (incomplete reporting)
-  * Different high credit/credit limit amounts
-  * Different dates (open date, last payment, etc.)
-- Set crossBureauIssue: true if any discrepancy is found
-- Include "Cross-bureau Issue" in violationCheck when applicable
-- Cross-bureau discrepancies are HIGH priority disputes
+The user may upload 1, 2, or 3 PDFs (one per bureau: Experian, Equifax, TransUnion).
+You MUST merge accounts across bureaus into a SINGLE entry per account:
+
+STEP 1 - IDENTIFY BUREAU SOURCE:
+- Look for bureau identifiers in the PDF content: "Experian", "Equifax", "TransUnion"
+- Map each PDF to its bureau: "EXP" (Experian), "EQF" (Equifax), "TU" (TransUnion)
+
+STEP 2 - MERGE ACCOUNTS:
+- Match accounts across bureaus by: creditor name (fuzzy match) + account number last 4 digits
+- Example: "CAPITAL ONE" on Experian + "CAPITAL ONE BANK" on Equifax + "CAPITALONE" on TransUnion = SAME account
+- Create ONE entry per unique account in masterTradelineTable and accounts[]
+- The "bureaus" field MUST list ALL bureaus that report this account: ["EXP", "EQF", "TU"] or subset
+
+STEP 3 - CROSS-BUREAU COMPARISON:
+For the SAME account appearing on multiple bureaus, compare:
+- Balance amounts (different = Cross-bureau Issue)
+- Account status (e.g., "Open" vs "Closed" = Cross-bureau Issue)
+- Payment status (e.g., "Current" vs "30 days late" = Cross-bureau Issue)
+- Credit limit/high credit amounts
+- Account open dates, last payment dates
+- If account appears on 1 or 2 bureaus but NOT all 3 = Cross-bureau Issue (incomplete reporting)
+
+STEP 4 - FLAG DISCREPANCIES:
+- If ANY discrepancy found: set crossBureauIssue: true
+- Add "Cross-bureau Issue" to violationCheck (can combine: "Wrong Amount / Cross-bureau Issue")
+
+EXAMPLE OUTPUT FOR MERGED ACCOUNT:
+{
+  "creditorName": "CAPITAL ONE",
+  "bureaus": ["EXP", "EQF", "TU"],
+  "crossBureauIssue": true,
+  "violationCheck": "Cross-bureau Issue",
+  "currentBalance": 2570,
+  ... (use data from first bureau, note discrepancy in sixCategoryIssueFlags)
+}
 
 VIOLATION CHECK CATEGORIES
 
 For each account, assign ONE of these violationCheck values (or combine if multiple apply):
-- "Clean" = No issues detected, account reporting appears accurate
+- "Clean" = No issues detected, account reporting appears accurate across all bureaus
 - "Duplicate" = Same debt reported by original creditor AND collector (double jeopardy)
 - "1099-C" = Cancelled/forgiven debt still showing balance (IRS 1099-C issued)
 - "Wrong Amount" = Balance doesn't match records, or unexplained increases
 - "Identity Theft" = Account not recognized/opened by consumer
 - "Post-Bankruptcy" = Discharged debt still showing balance/negative status
-- "Cross-bureau Issue" = Different data across bureaus for same account
+- "Cross-bureau Issue" = Account has different data across bureaus OR missing from some bureaus
 - Combine if multiple: "Wrong Amount / Cross-bureau Issue"
 
 CRITICAL OUTPUT RULES
@@ -186,10 +208,11 @@ DETAILED FIELD SCHEMAS
 
 reportSummary:
 {
-  "bureau": string|null,
+  "bureau": string|null (comma-separated list of ALL bureaus analyzed: "Experian, Equifax, TransUnion"),
+  "bureausAnalyzed": array of strings (["EXP", "EQF", "TU"] - list which bureau PDFs were provided),
   "reportDate": string|null,
   "consumerName": "Redacted",
-  "totalAccountsCount": number|null,
+  "totalAccountsCount": number|null (count of UNIQUE accounts after merging across bureaus),
   "derogatoryAccountsCount": number|null
 }
 
