@@ -273,9 +273,9 @@ creditMix:
 
 masterTradelineTable: array (ALL accounts from report) of
 {
-  "creditorName": string,
+  "creditorName": string (REQUIRED),
   "accountType": string (e.g., "Credit Card", "Installment", "Collection", "Mortgage"),
-  "accountNumberLast4": string|null,
+  "accountNumberLast4": string (REQUIRED - extract from masked account numbers like XXXX-1234, ****5678, or Account #...1234. Always include last 4 digits, e.g., "1234"),
   "status": string (e.g., "Open", "Charged Off/Closed", "Collection", "Paid, Closed"),
   "currentBalance": number,
   "isDerogatory": boolean,
@@ -283,12 +283,14 @@ masterTradelineTable: array (ALL accounts from report) of
   "violationCheck": string (one of: "Clean", "Duplicate", "1099-C", "Wrong Amount", "Identity Theft", "Post-Bankruptcy", "Cross-bureau Issue", or combination like "Wrong Amount / 1099-C"),
   "crossBureauIssue": boolean (true if account has discrepancies across bureaus)
 }
+EXAMPLE masterTradelineTable entry:
+{ "creditorName": "DISCOVER BANK", "accountType": "Credit Card", "accountNumberLast4": "7890", "status": "Account charged off.", "currentBalance": 11103, "isDerogatory": true, "bureaus": ["EXP", "EQF", "TU"], "violationCheck": "Clean", "crossBureauIssue": false }
 
 accounts: array (max 10, prioritize derogatory/collections) of
 {
-  "name": string,
+  "name": string (REQUIRED),
   "type": string,
-  "accountNumberLast4": string|null,
+  "accountNumberLast4": string (REQUIRED - same as masterTradelineTable, always extract last 4 digits),
   "balance": number,
   "status": string,
   "potentialViolation": string|null,
