@@ -861,9 +861,9 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50">
                           <th className="text-left py-3 px-3 font-semibold text-gray-700">Account</th>
+                          <th className="text-left py-3 px-3 font-semibold text-gray-700">Account Number</th>
                           <th className="text-left py-3 px-3 font-semibold text-gray-700">Type</th>
                           <th className="text-right py-3 px-3 font-semibold text-gray-700">Balance</th>
-                          <th className="text-center py-3 px-3 font-semibold text-gray-700">Bureaus</th>
                           <th className="text-left py-3 px-3 font-semibold text-gray-700">Status</th>
                           <th className="text-right py-3 px-3 font-semibold text-gray-700">Violation Check</th>
                         </tr>
@@ -871,20 +871,18 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                       <tbody>
                         {displayRows.map((row: any, idx: number) => {
                           const hasIssueRow = row.violationCheck && row.violationCheck.toLowerCase() !== 'clean';
+                          const accountNumber = (() => {
+                            const last4 = row.accountNumberLast4 || row.accountNumber || row.acctNumberLast4 || row.acctNumber || row.account_number_last4 || row.account_number || '';
+                            if (!last4) return '—';
+                            const cleaned = String(last4).replace(/[^0-9]/g, '');
+                            return cleaned ? `****${cleaned.slice(-4)}` : '—';
+                          })();
                           return (
                             <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 ${hasIssueRow ? 'bg-red-50/50' : ''}`}>
                               <td className="py-3 px-3">
                                 <div className="flex flex-col">
                                   <span className={`font-medium ${hasIssueRow ? 'text-red-700' : 'text-gray-900'}`}>
                                     {row.name ?? row.creditorName ?? row.furnisherName ?? row.accountName ?? 'Unknown'}
-                                  </span>
-                                  <span className="text-[10px] text-gray-500 font-mono mt-0.5">
-                                    {(() => {
-                                      const last4 = row.accountNumberLast4 || row.accountNumber || row.acctNumberLast4 || row.acctNumber || row.account_number_last4 || row.account_number || '';
-                                      if (!last4) return '';
-                                      const cleaned = String(last4).replace(/[^0-9]/g, '');
-                                      return cleaned ? `****${cleaned.slice(-4)}` : '';
-                                    })()}
                                   </span>
                                   {row.crossBureauIssue && (
                                     <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5 mt-0.5">
@@ -893,14 +891,14 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                                   )}
                                 </div>
                               </td>
+                              <td className="py-3 px-3 font-mono text-gray-600">
+                                {accountNumber}
+                              </td>
                               <td className="py-3 px-3 text-gray-600">
                                 {row.type ?? row.accountType ?? 'Unknown'}
                               </td>
                               <td className="py-3 px-3 text-right font-medium text-gray-900">
                                 ${extractBalance(row).toLocaleString()}
-                              </td>
-                              <td className="py-3 px-3 text-center">
-                                {getBureauBadges(row)}
                               </td>
                               <td className="py-3 px-3">
                                 <span className={`px-2 py-0.5 text-xs rounded-full ${
