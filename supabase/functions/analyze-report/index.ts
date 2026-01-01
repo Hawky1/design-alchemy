@@ -113,7 +113,25 @@ CRITICAL OUTPUT RULES
 
 - Keep total response under 4000 tokens.
 
-- ACCOUNT NUMBER EXTRACTION (CRITICAL): For EVERY account, extract the accountNumberLast4 field containing ONLY the visible numeric digits from the account number. Credit reports typically show partial account numbers like "****1234" or "XXXX5678". Extract ONLY the visible numeric digits (e.g., "1234" or "5678"). If the account number shows "4635XXXX2190", extract "2190". If it shows "XXXX-XXXX-1234", extract "1234". NEVER return "XXXX" or asterisks - only return the actual digits that are visible. If no numeric digits are visible at all, use null instead of masked placeholder text.
+- ACCOUNT NUMBER EXTRACTION (CRITICAL - DIFFERENT FORMATS BY BUREAU):
+  Each credit bureau displays account numbers differently. You MUST extract the visible digits correctly:
+  
+  EXPERIAN FORMAT: Shows first digits, masks end → "544303XXXXXXXXX"
+    → Extract the LAST 4 VISIBLE digits before the X's = "4303"
+  
+  EQUIFAX FORMAT: Shows asterisk + last digits → "*0863" or "Account Number: *0863"
+    → Extract the visible digits after asterisk = "0863"
+  
+  TRANSUNION FORMAT: Shows most digits, masks end → "517805884308****" (often in Account Name line)
+    → Extract the LAST 4 VISIBLE digits before the asterisks = "4308"
+  
+  GENERAL RULES:
+  - Look for account numbers in "Account Number:" fields AND sometimes embedded in account name lines
+  - Extract ONLY the numeric digits that are actually visible (not X, not *)
+  - Take the LAST 4 visible numeric digits from whatever is shown
+  - Return ONLY those 4 digits (e.g., "4303", "0863", "4308")
+  - NEVER return "XXXX", "****", or any masked placeholder - only actual numeric digits
+  - If no numeric digits are visible at all, use null
 
 - Mask sensitive data: show ONLY last4 for SSN and account numbers.
 
