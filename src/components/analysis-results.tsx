@@ -879,7 +879,12 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                                     {row.name ?? row.creditorName ?? row.furnisherName ?? row.accountName ?? 'Unknown'}
                                   </span>
                                   <span className="text-[10px] text-gray-500 font-mono mt-0.5">
-                                    {row.accountNumberLast4 ? `****${row.accountNumberLast4}` : row.accountNumber ? `****${row.accountNumber.slice(-4)}` : ''}
+                                    {(() => {
+                                      const last4 = row.accountNumberLast4 || row.accountNumber || row.acctNumberLast4 || row.acctNumber || row.account_number_last4 || row.account_number || '';
+                                      if (!last4) return '';
+                                      const cleaned = String(last4).replace(/[^0-9]/g, '');
+                                      return cleaned ? `****${cleaned.slice(-4)}` : '';
+                                    })()}
                                   </span>
                                   {row.crossBureauIssue && (
                                     <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5 mt-0.5">
