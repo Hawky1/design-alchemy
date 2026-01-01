@@ -275,7 +275,7 @@ masterTradelineTable: array (ALL accounts from report) of
 {
   "creditorName": string (REQUIRED),
   "accountType": string (e.g., "Credit Card", "Installment", "Collection", "Mortgage"),
-  "accountNumberLast4": string (REQUIRED - extract from masked account numbers like XXXX-1234, ****5678, or Account #...1234. Always include last 4 digits, e.g., "1234"),
+  "accountNumberLast4": string (REQUIRED - Extract the ACTUAL last 4 numeric digits from the account. Look for patterns like "Account Number: XXXXXXXX1234" or "Acct #: ****5678" - return ONLY the 4 digits like "1234" or "5678". NEVER return "XXXX" or "****" - those are masks, not the actual digits!),
   "status": string (e.g., "Open", "Charged Off/Closed", "Collection", "Paid, Closed"),
   "currentBalance": number,
   "isDerogatory": boolean,
@@ -286,11 +286,13 @@ masterTradelineTable: array (ALL accounts from report) of
 EXAMPLE masterTradelineTable entry:
 { "creditorName": "DISCOVER BANK", "accountType": "Credit Card", "accountNumberLast4": "7890", "status": "Account charged off.", "currentBalance": 11103, "isDerogatory": true, "bureaus": ["EXP", "EQF", "TU"], "violationCheck": "Clean", "crossBureauIssue": false }
 
-accounts: array (max 10, prioritize derogatory/collections) of
+CRITICAL: The "accounts" array MUST NOT be empty! Always populate it with at least the top 10 derogatory/collection accounts.
+
+accounts: array (REQUIRED - min 1, max 10, prioritize derogatory/collections - NEVER return empty array!) of
 {
-  "name": string (REQUIRED),
-  "type": string,
-  "accountNumberLast4": string (REQUIRED - same as masterTradelineTable, always extract last 4 digits),
+  "name": string (REQUIRED - creditor name),
+  "type": string (REQUIRED - account type),
+  "accountNumberLast4": string (REQUIRED - the ACTUAL last 4 digits like "1234", NOT "XXXX"),
   "balance": number,
   "status": string,
   "potentialViolation": string|null,
