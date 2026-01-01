@@ -874,8 +874,13 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                           const accountNumber = (() => {
                             const last4 = row.accountNumberLast4 || row.accountNumber || row.acctNumberLast4 || row.acctNumber || row.account_number_last4 || row.account_number || '';
                             if (!last4) return '—';
-                            const cleaned = String(last4).replace(/[^0-9]/g, '');
-                            return cleaned ? `****${cleaned.slice(-4)}` : '—';
+                            const strValue = String(last4).trim();
+                            // If it already has masking like "****1234" or "XXXX1234", show as-is
+                            if (strValue.includes('*') || strValue.includes('X')) {
+                              return strValue;
+                            }
+                            // Otherwise just show the value (likely just the last 4 digits)
+                            return strValue ? `****${strValue}` : '—';
                           })();
                           return (
                             <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 ${hasIssueRow ? 'bg-red-50/50' : ''}`}>
