@@ -64,10 +64,9 @@ export default function Analyze() {
             setError('Please upload at least one credit report');
             return;
         }
-        
-        // Bypass lead capture dialog - go straight to analysis
-        const dummyLead: LeadData = { name: 'Test User', email: 'test@example.com' };
-        handleAnalyze(dummyLead);
+
+        // Show lead capture dialog before analysis
+        setShowLeadDialog(true);
     };
 
     const handleLeadSubmit = (data: LeadData) => {
@@ -145,7 +144,10 @@ export default function Analyze() {
                                     throw new Error(parsed?.message || 'Analysis failed');
                                 }
                             } catch (e) {
-                                // Skip invalid JSON lines
+                                // Log JSON parse errors for debugging
+                                if (data && data.length > 0 && data !== '[DONE]') {
+                                    console.warn('Failed to parse SSE data:', data, 'Error:', e);
+                                }
                             }
                         }
                     }

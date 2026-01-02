@@ -570,27 +570,104 @@ async function callGeminiWithPdf(
 }
 
 // Helper function to merge multiple bureau results into one
+// Helper function to normalize string for comparison (fuzzy matching)
+function normalizeForComparison(str: string | undefined | null): string {
+  if (!str) return '';
+  return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Helper function to extract last 4 digits from account number
+function getLast4Digits(accountNum: string | undefined | null): string {
+  if (!accountNum) return '';
+  const digitsOnly = accountNum.toString().replace(/[^0-9]/g, '');
+  return digitsOnly.slice(-4);
+}
+
+// Helper function to check if two accounts are the same across bureaus
+function isSameAccount(acc1: Record<string, unknown>, acc2: Record<string, unknown>): boolean {
+  // Get creditor names and normalize
+  const creditor1 = normalizeForComparison(acc1.creditorName as string || acc1.accountName as string);
+  const creditor2 = normalizeForComparison(acc2.creditorName as string || acc2.accountName as string);
+
+  // Get account numbers last 4 digits
+  const last4_1 = getLast4Digits(acc1.accountNumberLast4 as string || acc1.accountNumber as string);
+  const last4_2 = getLast4Digits(acc2.accountNumberLast4 as string || acc2.accountNumber as string);
+
+  // Match if creditor names are similar AND last 4 digits match
+  const creditorMatch = creditor1 && creditor2 && creditor1 === creditor2;
+  const accountMatch = last4_1 && last4_2 && last4_1 === last4_2;
+
+  return creditorMatch && accountMatch;
+}
+
 function mergeAnalysisResults(results: { bureau: string; data: Record<string, unknown> }[]): Record<string, unknown> {
   if (results.length === 0) return {};
   if (results.length === 1) return results[0].data;
-  
+
   // Start with the first result as base
   const merged: Record<string, unknown> = JSON.parse(JSON.stringify(results[0].data));
   const allBureaus = results.map(r => r.bureau).join(', ');
-  
+  const firstBureau = results[0].bureau;
+
+  // Tag all accounts from first bureau
+  if (Array.isArray(merged.masterTradelineTable)) {
+    for (const acc of merged.masterTradelineTable as Record<string, unknown>[]) {
+      acc.bureaus = [firstBureau];
+    }
+  }
+
   // Update reportSummary with all bureaus
   if (merged.reportSummary && typeof merged.reportSummary === 'object') {
     (merged.reportSummary as Record<string, unknown>).bureau = allBureaus;
   }
-  
+
   // Merge arrays from other results
   for (let i = 1; i < results.length; i++) {
     const other = results[i].data;
-    
-    // Merge masterTradelineTable
+    const otherBureau = results[i].bureau;
+
+    // Merge masterTradelineTable with cross-bureau deduplication
     if (Array.isArray(other.masterTradelineTable)) {
-      const existing = (merged.masterTradelineTable as unknown[]) || [];
-      merged.masterTradelineTable = [...existing, ...other.masterTradelineTable].slice(0, 15);
+      const existing = (merged.masterTradelineTable as Record<string, unknown>[]) || [];
+      const newAccounts = other.masterTradelineTable as Record<string, unknown>[];
+
+      for (const newAcc of newAccounts) {
+        // Check if this account already exists in merged results
+        const existingAccIndex = existing.findIndex(existingAcc => isSameAccount(existingAcc, newAcc));
+
+        if (existingAccIndex >= 0) {
+          // Account exists - merge bureau info
+          const existingAcc = existing[existingAccIndex];
+
+          // Add bureau to bureaus array
+          const existingBureaus = Array.isArray(existingAcc.bureaus) ? existingAcc.bureaus as string[] : [];
+          if (!existingBureaus.includes(otherBureau)) {
+            existingAcc.bureaus = [...existingBureaus, otherBureau];
+          }
+
+          // Flag cross-bureau discrepancies in balance, status, or dates
+          const balanceDiff = Math.abs((existingAcc.balance as number || 0) - (newAcc.balance as number || 0));
+          const statusDiff = (existingAcc.accountStatus || '') !== (newAcc.accountStatus || '');
+          const dateDiff = (existingAcc.openedDate || '') !== (newAcc.openedDate || '');
+
+          if (balanceDiff > 0 || statusDiff || dateDiff) {
+            existingAcc.crossBureauDiscrepancy = true;
+            existingAcc.discrepancyDetails = existingAcc.discrepancyDetails || {};
+            (existingAcc.discrepancyDetails as Record<string, unknown>)[otherBureau] = {
+              balance: newAcc.balance,
+              status: newAcc.accountStatus,
+              openedDate: newAcc.openedDate
+            };
+          }
+        } else {
+          // New account - add it with bureau info
+          const accWithBureau = { ...newAcc };
+          accWithBureau.bureaus = [otherBureau];
+          existing.push(accWithBureau);
+        }
+      }
+
+      merged.masterTradelineTable = existing.slice(0, 50); // Increase limit for cross-bureau analysis
     }
     
     // Merge inquiries
@@ -879,37 +956,46 @@ serve(async (req) => {
       }
     }
 
-    // Upload PDFs to Gemini Files API
+    // Upload PDFs to Gemini Files API - PARALLEL UPLOAD
     const uploadedFiles: { bureau: string; fileUri: string }[] = [];
     const bureauNames: string[] = [];
-    
+
+    // Build array of upload promises for parallel execution
+    const uploadPromises: Promise<{ bureau: string; result: { success: boolean; fileUri?: string; error?: string } }>[] = [];
+
     if (experianFile) {
-      const result = await uploadPdfToGemini(GEMINI_API_KEY, experianFile, 'Experian');
-      if (result.success && result.fileUri) {
-        uploadedFiles.push({ bureau: 'Experian', fileUri: result.fileUri });
-        bureauNames.push('Experian');
-      } else {
-        console.error('Failed to upload Experian file:', result.error);
-      }
+      uploadPromises.push(
+        uploadPdfToGemini(GEMINI_API_KEY, experianFile, 'Experian')
+          .then(result => ({ bureau: 'Experian', result }))
+          .catch(error => ({ bureau: 'Experian', result: { success: false, error: error.message } }))
+      );
     }
-    
     if (equifaxFile) {
-      const result = await uploadPdfToGemini(GEMINI_API_KEY, equifaxFile, 'Equifax');
-      if (result.success && result.fileUri) {
-        uploadedFiles.push({ bureau: 'Equifax', fileUri: result.fileUri });
-        bureauNames.push('Equifax');
-      } else {
-        console.error('Failed to upload Equifax file:', result.error);
-      }
+      uploadPromises.push(
+        uploadPdfToGemini(GEMINI_API_KEY, equifaxFile, 'Equifax')
+          .then(result => ({ bureau: 'Equifax', result }))
+          .catch(error => ({ bureau: 'Equifax', result: { success: false, error: error.message } }))
+      );
     }
-    
     if (transunionFile) {
-      const result = await uploadPdfToGemini(GEMINI_API_KEY, transunionFile, 'TransUnion');
+      uploadPromises.push(
+        uploadPdfToGemini(GEMINI_API_KEY, transunionFile, 'TransUnion')
+          .then(result => ({ bureau: 'TransUnion', result }))
+          .catch(error => ({ bureau: 'TransUnion', result: { success: false, error: error.message } }))
+      );
+    }
+
+    // Execute all uploads in parallel
+    console.log(`Uploading ${uploadPromises.length} PDF files in parallel...`);
+    const uploadResults = await Promise.all(uploadPromises);
+
+    // Process upload results
+    for (const { bureau, result } of uploadResults) {
       if (result.success && result.fileUri) {
-        uploadedFiles.push({ bureau: 'TransUnion', fileUri: result.fileUri });
-        bureauNames.push('TransUnion');
+        uploadedFiles.push({ bureau, fileUri: result.fileUri });
+        bureauNames.push(bureau);
       } else {
-        console.error('Failed to upload TransUnion file:', result.error);
+        console.error(`Failed to upload ${bureau} file:`, result.error);
       }
     }
 
@@ -932,46 +1018,54 @@ serve(async (req) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'processing', progress, message })}\n\n`));
           };
 
-          sendProgress(10, 'PDF files uploaded...');
-          sendProgress(20, `Analyzing ${bureauNames.join(', ')} credit reports with Gemini...`);
+          sendProgress(10, 'PDF files uploaded successfully...');
+          sendProgress(15, `Analyzing ${bureauNames.length} credit report${bureauNames.length > 1 ? 's' : ''} simultaneously...`);
 
-          // ========== SEQUENTIAL ANALYSIS OF EACH PDF ==========
+          // ========== PARALLEL ANALYSIS OF ALL PDFs ==========
           const bureauResults: { bureau: string; data: Record<string, unknown> }[] = [];
-          const totalFiles = uploadedFiles.length;
-          
-          for (let i = 0; i < uploadedFiles.length; i++) {
-            const { bureau, fileUri } = uploadedFiles[i];
-            const progressBase = 20 + (i * 50 / totalFiles);
-            
-            sendProgress(progressBase, `Analyzing ${bureau} credit report (${i + 1}/${totalFiles})...`);
-            
+
+          console.log(`Starting parallel analysis of ${uploadedFiles.length} PDFs...`);
+
+          // Launch all Gemini analyses in parallel
+          const analysisPromises = uploadedFiles.map(({ bureau, fileUri }) => {
             const userPrompt = `Analyze this ${bureau} credit report. Extract all data, compute metrics, flag issues, check write-offs and balance history, and draft dispute letters as specified.`;
-            
-            const result = await callGeminiWithPdf(
-              GEMINI_API_KEY,
-              ANALYSIS_PROMPT,
-              userPrompt,
-              fileUri,
-              bureau
-            );
-            
-            // Delete the file after processing
-            await deleteGeminiFile(GEMINI_API_KEY, fileUri);
-            
+
+            return callGeminiWithPdf(GEMINI_API_KEY, ANALYSIS_PROMPT, userPrompt, fileUri, bureau)
+              .then(result => ({ bureau, fileUri, result }))
+              .catch(error => ({ bureau, fileUri, result: { success: false, error: error.message } }));
+          });
+
+          sendProgress(25, `Processing ${bureauNames.join(', ')} reports with AI...`);
+
+          // Wait for all analyses to complete in parallel
+          const analysisResults = await Promise.all(analysisPromises);
+
+          sendProgress(75, 'AI analysis complete, cleaning up...');
+
+          // Process results and cleanup files
+          const failedBureaus: string[] = [];
+          for (const { bureau, fileUri, result } of analysisResults) {
+            // Delete the uploaded file after processing
+            try {
+              await deleteGeminiFile(GEMINI_API_KEY, fileUri);
+            } catch (deleteError) {
+              console.warn(`Failed to delete ${bureau} file:`, deleteError);
+            }
+
             if (result.success && result.data) {
               bureauResults.push({ bureau, data: result.data as Record<string, unknown> });
               console.log(`Successfully analyzed ${bureau}`);
             } else {
               console.error(`Failed to analyze ${bureau}:`, result.error);
-              sendProgress(progressBase + 10, `Warning: ${bureau} analysis failed - ${result.error?.includes('timed out') ? 'timed out' : 'error occurred'}`);
-            }
-            
-            // Small delay between API calls
-            if (i < uploadedFiles.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 500));
+              failedBureaus.push(bureau);
             }
           }
-          
+
+          // Report any failures
+          if (failedBureaus.length > 0) {
+            sendProgress(78, `Warning: ${failedBureaus.join(', ')} analysis failed`);
+          }
+
           if (bureauResults.length === 0) {
             console.error('All analyses failed');
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'error', message: 'Failed to analyze credit reports. Please try again.' })}\n\n`));
@@ -993,9 +1087,19 @@ serve(async (req) => {
             disputeLetters: (analysisResult.finalReport as Record<string, unknown>)?.disputeLetters ?? []
           };
 
+          // Validate that accounts array is not empty
+          const accountsArray = Array.isArray(finalResult.accounts) ? finalResult.accounts : [];
+          const masterTradelineArray = Array.isArray(finalResult.masterTradelineTable) ? finalResult.masterTradelineTable : [];
+
+          if (accountsArray.length === 0 && masterTradelineArray.length === 0) {
+            console.warn('WARNING: Analysis returned empty accounts and masterTradelineTable arrays');
+            throw new Error('No accounts found in credit reports. Please ensure PDFs contain account information.');
+          }
+
           console.log('Analysis completed successfully with Gemini');
+          console.log(`Found ${accountsArray.length} accounts and ${masterTradelineArray.length} tradelines`);
           sendProgress(98, 'Report ready!');
-          
+
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'completed', result: finalResult })}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();

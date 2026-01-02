@@ -807,38 +807,64 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
           };
           
           const getBureauBadges = (row: any) => {
-            const bureaus = row.bureaus || [];
-            const hasCrossBureauIssue = row.crossBureauIssue || row.violationCheck?.toLowerCase().includes('cross-bureau');
-            
+            let bureaus = row.bureaus || [];
+            const hasCrossBureauIssue = row.crossBureauDiscrepancy || row.crossBureauIssue || row.violationCheck?.toLowerCase().includes('cross-bureau');
+
             const bureauColors: Record<string, string> = {
               'EXP': 'bg-blue-500 text-white',
-              'EQF': 'bg-red-500 text-white', 
+              'Experian': 'bg-blue-500 text-white',
+              'experian': 'bg-blue-500 text-white',
+              'EQF': 'bg-red-500 text-white',
+              'Equifax': 'bg-red-500 text-white',
+              'equifax': 'bg-red-500 text-white',
               'TU': 'bg-green-600 text-white',
+              'TransUnion': 'bg-green-600 text-white',
+              'transunion': 'bg-green-600 text-white',
             };
-            
-            // If no bureaus data, try to detect from reportSummary
+
+            // Normalize bureau names for display
+            const normalizeBureau = (b: string): string => {
+              const lower = b.toLowerCase();
+              if (lower.includes('experian') || lower === 'exp') return 'EXP';
+              if (lower.includes('equifax') || lower === 'eqf') return 'EQF';
+              if (lower.includes('transunion') || lower === 'tu') return 'TU';
+              return b;
+            };
+
+            // If no bureaus data, try to detect from row's bureau field or reportSummary
             if (bureaus.length === 0) {
-              const rawResults = results as any;
-              const bureau = rawResults?.reportSummary?.bureau || '';
-              if (bureau.toLowerCase().includes('experian')) bureaus.push('EXP');
-              if (bureau.toLowerCase().includes('equifax')) bureaus.push('EQF');
-              if (bureau.toLowerCase().includes('transunion')) bureaus.push('TU');
+              // Check if row has a single bureau field
+              if (row.bureau) {
+                bureaus = [row.bureau];
+              } else {
+                // Fallback to reportSummary
+                const rawResults = results as any;
+                const bureau = rawResults?.reportSummary?.bureau || '';
+                if (bureau.toLowerCase().includes('experian')) bureaus.push('Experian');
+                if (bureau.toLowerCase().includes('equifax')) bureaus.push('Equifax');
+                if (bureau.toLowerCase().includes('transunion')) bureaus.push('TransUnion');
+              }
             }
-            
+
+            // Normalize all bureau names
+            const normalizedBureaus = bureaus.map(normalizeBureau);
+            // Remove duplicates
+            const uniqueBureaus = [...new Set(normalizedBureaus)];
+
             return (
-              <div className="flex flex-col gap-1">
-                <div className="flex gap-1">
-                  {bureaus.length > 0 ? bureaus.map((b: string) => (
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {uniqueBureaus.length > 0 ? uniqueBureaus.map((b: string) => (
                     <span key={b} className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${bureauColors[b] || 'bg-gray-500 text-white'}`}>
                       {b}
                     </span>
                   )) : (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-400 text-white">N/A</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-400 text-white">—</span>
                   )}
                 </div>
                 {hasCrossBureauIssue && (
                   <span className="text-[10px] text-yellow-600 font-medium flex items-center gap-0.5">
-                    <AlertTriangle className="w-2.5 h-2.5" />Cross-bureau Issue
+                    <AlertTriangle className="w-2.5 h-2.5" />Discrepancy
                   </span>
                 )}
               </div>
@@ -865,6 +891,7 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                           <th className="text-left py-3 px-3 font-semibold text-gray-700">Type</th>
                           <th className="text-right py-3 px-3 font-semibold text-gray-700">Balance</th>
                           <th className="text-left py-3 px-3 font-semibold text-gray-700">Status</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-700">Bureau</th>
                           <th className="text-right py-3 px-3 font-semibold text-gray-700">Violation Check</th>
                         </tr>
                       </thead>
@@ -917,6 +944,9 @@ export default function AnalysisResults({ results, onReset }: AnalysisResultsPro
                                 }`}>
                                   {row.status ?? 'Unknown'}
                                 </span>
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                {getBureauBadges(row)}
                               </td>
                               <td className="py-3 px-3 text-right">
                                 {getViolationPill(row)}
